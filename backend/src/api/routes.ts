@@ -1,0 +1,20 @@
+import { Router } from "express";
+import type { Logger } from "pino";
+import type { AppEnv } from "@/config/env";
+import { healthController } from "@/api/controllers/healthController";
+import { documentsController } from "@/api/controllers/documentsController";
+import { chatController } from "@/api/controllers/chatController";
+import { buildContainer } from "@/infrastructure/container";
+
+export function buildRoutes(opts: { env: AppEnv; logger: Logger }) {
+  const { env, logger } = opts;
+  const router = Router();
+  const container = buildContainer({ env, logger });
+
+  router.get("/health", healthController());
+  router.use("/documents", documentsController(container));
+  router.use("/chat", chatController(container));
+
+  return router;
+}
+
