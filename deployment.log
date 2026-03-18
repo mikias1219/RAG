@@ -1,0 +1,13 @@
+
+╔════════════════════════════════════════════════════════════════╗
+║   AI102 RAG SaaS — COMPLETE AZURE DEPLOYMENT                  ║
+║   Region: eastus                                              ║
+║   Resource Group: AI102                              ║
+╚════════════════════════════════════════════════════════════════╝
+
+[0;32m[✓][0m Phase 1: Checking prerequisites...
+[0;32m[✓][0m Authenticated to subscription: 29f1cd2f-d0e2-413e-b913-1976b6924fa6
+[0;32m[✓][0m Phase 2: Creating resource group...
+ERROR: (InvalidResourceGroupLocation) Invalid resource group location 'eastus'. The Resource group already exists in location 'centralus'.
+Code: InvalidResourceGroupLocation
+Message: Invalid resource group location 'eastus'. The Resource group already exists in location 'centralus'.

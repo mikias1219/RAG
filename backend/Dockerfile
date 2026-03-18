@@ -6,7 +6,7 @@ RUN npm ci
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY tsconfig.json jest.config.cjs ./
+COPY package.json package-lock.json* tsconfig.json jest.config.cjs ./
 COPY prisma ./prisma
 COPY src ./src
 RUN npm run build
