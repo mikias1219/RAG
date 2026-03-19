@@ -16,13 +16,20 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   async function submit() {
+    const normalizedEmail = email.trim();
+    const normalizedPassword = password.trim();
+    const normalizedDisplayName = displayName.trim();
+    if (!normalizedEmail || !normalizedPassword) {
+      setError("Email and password are required");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const res =
         mode === "login"
-          ? await login({ email, password })
-          : await register({ email, password, displayName });
+          ? await login({ email: normalizedEmail, password: normalizedPassword })
+          : await register({ email: normalizedEmail, password: normalizedPassword, displayName: normalizedDisplayName });
       setAuthToken(res.token);
       router.replace("/");
     } catch (e: any) {
@@ -78,6 +85,7 @@ export default function LoginPage() {
           <input
             className="composer-input"
             placeholder="Email"
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />

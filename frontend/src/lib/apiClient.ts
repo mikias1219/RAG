@@ -47,10 +47,17 @@ export async function listDocuments(page = 1, pageSize = 25): Promise<PaginatedD
 }
 
 export async function login(input: { email: string; password: string }) {
+  const email = input.email.trim();
+  const password = input.password.trim();
   const res = await fetch(`${baseUrl}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input)
+    body: JSON.stringify({
+      email,
+      username: email,
+      password,
+      pass: password
+    })
   });
   return handle(res);
 }
@@ -77,6 +84,15 @@ export async function getMe() {
   const res = await fetch(`${baseUrl}/auth/me`, {
     method: "GET",
     headers: authHeaders()
+  });
+  return handle(res);
+}
+
+export async function updateMe(input: { displayName: string }) {
+  const res = await fetch(`${baseUrl}/auth/me`, {
+    method: "PATCH",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(input)
   });
   return handle(res);
 }

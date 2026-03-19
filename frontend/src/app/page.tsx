@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChatShell } from "@/components/Chat/ChatShell";
 import { DocumentsPanel } from "@/components/Documents/DocumentsPanel";
 import { clearAuthToken, getAuthToken } from "@/lib/auth";
-import { getMe, listUsers, updateUserStatus } from "@/lib/apiClient";
+import { getMe, listUsers, updateMe, updateUserStatus } from "@/lib/apiClient";
 
 type AppSection = "chat" | "documents" | "collections" | "profile" | "admin";
 
@@ -28,6 +28,10 @@ export default function HomePage() {
   const [section, setSection] = useState<AppSection>("chat");
   const [adminUsers, setAdminUsers] = useState<UserRow[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
+  const [profileNameDraft, setProfileNameDraft] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -39,6 +43,7 @@ export default function HomePage() {
       .then((res) => {
         setUserEmail(res.user?.email ?? "");
         setUserName(res.user?.displayName ?? "");
+        setProfileNameDraft(res.user?.displayName ?? "");
         setUserRole(res.user?.role ?? "user");
         setReady(true);
       })
@@ -190,6 +195,41 @@ export default function HomePage() {
                   <p className="metric-label">Role</p>
                   <p className="metric-value">{userRole}</p>
                 </div>
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <p className="metric-label">Edit display name</p>
+                <input
+                  className="composer-input"
+                  value={profileNameDraft}
+                  onChange={(e) => setProfileNameDraft(e.target.value)}
+                  placeholder="Your display name"
+                  style={{ marginTop: 8 }}
+                />
+                <button
+                  className="composer-send"
+                  style={{ marginTop: 10 }}
+                  disabled={profileSaving || profileNameDraft.trim().length === 0}
+                  onClick={async () => {
+                    setProfileSaving(true);
+                    setProfileError(null);
+                    setProfileSuccess(null);
+                    try {
+                      const res = await updateMe({ displayName: profileNameDraft.trim() });
+                      const updatedName = res.user?.displayName ?? "";
+                      setUserName(updatedName);
+                      setProfileNameDraft(updatedName);
+                      setProfileSuccess("Profile updated");
+                    } catch (e: any) {
+                      setProfileError(e?.message ?? "Failed to update profile");
+                    } finally {
+                      setProfileSaving(false);
+                    }
+                  }}
+                >
+                  {profileSaving ? "Saving..." : "Save profile"}
+                </button>
+                {profileError && <p className="error-text" style={{ marginTop: 8 }}>{profileError}</p>}
+                {profileSuccess && <p className="info-text" style={{ marginTop: 8 }}>{profileSuccess}</p>}
               </div>
             </div>
           </section>

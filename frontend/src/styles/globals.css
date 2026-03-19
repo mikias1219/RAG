@@ -18,10 +18,11 @@
 html,
 body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
   background: radial-gradient(circle at top, #121d37 0%, var(--bg) 46%);
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  overflow: hidden;
 }
 
 a {
@@ -38,6 +39,11 @@ a {
 .container {
   width: min(1300px, calc(100% - 2rem));
   margin: 0 auto;
+}
+
+.content-container {
+  height: 100%;
+  min-height: 0;
 }
 
 .topbar {
@@ -98,12 +104,15 @@ a {
 .content {
   flex: 1;
   padding: 20px 0;
+  overflow: hidden;
 }
 
 .workspace {
   display: grid;
   gap: 16px;
   grid-template-columns: 220px minmax(0, 1.9fr) minmax(0, 1.2fr);
+  height: 100%;
+  min-height: 0;
 }
 
 .panel {
@@ -111,7 +120,7 @@ a {
   border-radius: 14px;
   background: linear-gradient(180deg, var(--panel-elevated), var(--panel));
   box-shadow: 0 10px 36px rgba(0, 0, 0, 0.25);
-  min-height: 640px;
+  min-height: 0;
 }
 
 .panel-compact {
@@ -128,6 +137,7 @@ a {
 .chat-panel,
 .docs-panel {
   overflow: hidden;
+  height: 100%;
 }
 
 .panel-title {
@@ -455,8 +465,19 @@ a {
 }
 
 @media (max-width: 1150px) {
+  html,
+  body {
+    overflow: auto;
+    height: auto;
+  }
+
+  .content {
+    overflow: visible;
+  }
+
   .workspace {
     grid-template-columns: minmax(0, 1fr);
+    height: auto;
   }
 
   .panel {

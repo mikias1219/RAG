@@ -5,14 +5,16 @@ import { badRequest } from "@/domain/errors/AppError";
 import { asyncHandler } from "@/shared/utils/asyncHandler";
 
 const registerSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1),
   password: z.string().min(8),
   displayName: z.string().min(1).max(120).optional()
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1)
+  email: z.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  pass: z.string().optional()
 });
 
 const googleSchema = z.object({
@@ -23,6 +25,10 @@ const statusSchema = z.object({
   status: z.enum(["approved", "rejected"])
 });
 
+const meUpdateSchema = z.object({
+  displayName: z.string().min(1).max(120)
+});
+
 export function authController(container: Container) {
   const router = Router();
   const tenantId = "t_default";
@@ -31,7 +37,7 @@ export function authController(container: Container) {
     "/register",
     asyncHandler(async (req, res) => {
       const parsed = registerSchema.safeParse(req.body);
-      if (!parsed.success) throw badRequest("Invalid body", parsed.error.flatten());
+      if (!parsed.success) throw badRequest("Invalid body: email/password/displayName format is incorrect");
       const result = await container.authService.register({
         tenantId,
         email: parsed.data.email,
@@ -46,11 +52,14 @@ export function authController(container: Container) {
     "/login",
     asyncHandler(async (req, res) => {
       const parsed = loginSchema.safeParse(req.body);
-      if (!parsed.success) throw badRequest("Invalid body", parsed.error.flatten());
+      if (!parsed.success) throw badRequest("Invalid body: email and password are required");
+      const email = (parsed.data.email ?? parsed.data.username ?? "").trim();
+      const password = (parsed.data.password ?? parsed.data.pass ?? "").trim();
+      if (!email || !password) throw badRequest("Invalid body: email and password are required");
       const result = await container.authService.login({
         tenantId,
-        email: parsed.data.email,
-        password: parsed.data.password
+        email,
+        password
       });
       res.json(result);
     })
@@ -60,7 +69,7 @@ export function authController(container: Container) {
     "/google",
     asyncHandler(async (req, res) => {
       const parsed = googleSchema.safeParse(req.body);
-      if (!parsed.success) throw badRequest("Invalid body", parsed.error.flatten());
+      if (!parsed.success) throw badRequest("Invalid body: missing Google token");
       const result = await container.authService.loginWithGoogle({
         tenantId,
         idToken: parsed.data.idToken
@@ -77,6 +86,24 @@ export function authController(container: Container) {
       if (!token) throw badRequest("Missing Bearer token");
       const user = container.authService.verifyToken(token);
       res.json({ user });
+    })
+  );
+
+  router.patch(
+    "/me",
+    asyncHandler(async (req, res) => {
+      const header = req.header("authorization");
+      const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
+      if (!token) throw badRequest("Missing Bearer token");
+      const auth = container.authService.verifyToken(token);
+      const parsed = meUpdateSchema.safeParse(req.body);
+      if (!parsed.success) throw badRequest("Invalid body: displayName is required");
+      const updated = await container.authService.updateProfile({
+        tenantId: auth.tenantId,
+        userId: auth.id,
+        displayName: parsed.data.displayName
+      });
+      res.json({ user: updated });
     })
   );
 

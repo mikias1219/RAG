@@ -1,6 +1,7 @@
 import type { AiService } from "@/domain/ports/aiService";
 import type { SearchService } from "@/domain/ports/searchService";
 import type { CacheService } from "@/domain/ports/cacheService";
+import { badRequest } from "@/domain/errors/AppError";
 import { withRetry } from "@/shared/utils/retry";
 import { getPrisma } from "@/infrastructure/db/prismaClient";
 
@@ -22,25 +23,33 @@ export class RagService {
       throw new Error("Question cannot be empty");
     }
 
-    const embedding = await withRetry(
-      () => this.deps.ai.embedText({ text: question }),
-      { maxAttempts: 3, delayMs: 1000 }
-    );
+    let embedding: { vector: number[] };
+    try {
+      embedding = await withRetry(
+        () => this.deps.ai.embedText({ text: question }),
+        { maxAttempts: 3, delayMs: 1000 }
+      );
+    } catch {
+      // If embedding temporarily fails, continue with DB fallback instead of 500.
+      embedding = { vector: [] };
+    }
 
     const cacheKey = `rag:${tenantId}:${hashShort(question)}`;
     const cached = await this.deps.cache.get<{ chunks: any[] }>(cacheKey).catch(() => null);
     
     const chunks =
       cached?.chunks ??
-      (await withRetry(
-        () =>
-          this.deps.search.querySimilar({
-            tenantId,
-            embedding: embedding.vector,
-            topK: this.deps.topK
-          }),
-        { maxAttempts: 2, delayMs: 500 }
-      ));
+      (embedding.vector.length === 0
+        ? []
+        : await withRetry(
+            () =>
+              this.deps.search.querySimilar({
+                tenantId,
+                embedding: embedding.vector,
+                topK: this.deps.topK
+              }),
+            { maxAttempts: 2, delayMs: 500 }
+          ).catch(() => []));
 
     if (!cached) {
       await this.deps.cache.set(cacheKey, { chunks }, { ttlSeconds: 300 }).catch(() => {
@@ -84,7 +93,11 @@ export class RagService {
           ]
         }),
       { maxAttempts: 2, delayMs: 1000 }
-    );
+    ).catch(() => {
+      throw badRequest(
+        "AI response generation failed. Please retry in a few seconds or upload more source content."
+      );
+    });
 
     return {
       answer: completion.text,

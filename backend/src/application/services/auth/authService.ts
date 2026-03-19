@@ -136,6 +136,23 @@ export class AuthService {
     if (updated.count === 0) throw badRequest("User not found");
   }
 
+  async updateProfile(input: { tenantId: string; userId: string; displayName: string }) {
+    const user = await this.prisma.user.update({
+      where: { id: input.userId },
+      data: { displayName: input.displayName.trim() },
+      select: {
+        id: true,
+        tenantId: true,
+        email: true,
+        displayName: true,
+        role: true,
+        status: true
+      }
+    });
+    if (user.tenantId !== input.tenantId) throw unauthorized("Invalid account scope");
+    return user;
+  }
+
   verifyToken(token: string): AuthUser {
     try {
       const decoded = jwt.verify(token, this.opts.jwtSecret) as AuthUser & { exp?: number };
