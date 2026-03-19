@@ -73,7 +73,7 @@ export class IngestDocumentService {
     for (const row of chunkRows) {
       const emb = await this.deps.ai.embedText({ text: row.text });
       searchDocs.push({
-        id: `${tenantId}:${documentId}:${row.id}`,
+        id: makeSearchKey(tenantId, documentId, row.id),
         tenantId,
         documentId,
         chunkId: row.id,
@@ -110,5 +110,10 @@ function safeFilename(name: string) {
 function cryptoRandomId() {
   // Node 22 supports crypto.randomUUID()
   return require("crypto").randomUUID();
+}
+
+function makeSearchKey(tenantId: string, documentId: string, chunkId: string) {
+  // Azure AI Search keys must avoid separators like ":".
+  return `t_${tenantId}__d_${documentId}__c_${chunkId}`.replace(/[^A-Za-z0-9_=-]/g, "_");
 }
 
