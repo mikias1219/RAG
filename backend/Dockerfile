@@ -19,4 +19,4 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY prisma ./prisma
 EXPOSE 8080
-CMD ["node", "dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma db push && node dist/src/main.js"]
