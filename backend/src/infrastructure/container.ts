@@ -6,12 +6,17 @@ import type { StorageService } from "@/domain/ports/storageService";
 import type { CacheService } from "@/domain/ports/cacheService";
 import type { DocumentRepository } from "@/domain/ports/documentRepository";
 import type { ChatRepository } from "@/domain/ports/chatRepository";
+import type { IngestionJobRepository } from "@/domain/ports/ingestionJobRepository";
+import type { DocumentIntelligenceService } from "@/domain/ports/documentIntelligenceService";
 import { AzureOpenAiService } from "@/infrastructure/ai/azureOpenAiService";
 import { AzureAiSearchService } from "@/infrastructure/search/azureAiSearchService";
 import { AzureBlobStorageService } from "@/infrastructure/storage/azureBlobStorageService";
 import { InMemoryCacheService } from "@/infrastructure/cache/inMemoryCacheService";
 import { PrismaDocumentRepository } from "@/infrastructure/db/repositories/documentRepository.prisma";
 import { PrismaChatRepository } from "@/infrastructure/db/repositories/chatRepository.prisma";
+import { PrismaIngestionJobRepository } from "@/infrastructure/db/repositories/ingestionJobRepository.prisma";
+import { AzureDocumentIntelligenceService } from "@/infrastructure/documentIntelligence/azureDocumentIntelligenceService";
+import { LocalDocumentIntelligenceService } from "@/infrastructure/documentIntelligence/localDocumentIntelligenceService";
 import { RagService } from "@/application/services/rag/ragService";
 import { IngestDocumentService } from "@/application/services/documents/ingestDocument";
 import { ChatService } from "@/application/services/chat/chatService";
@@ -26,6 +31,8 @@ export type Container = {
   cache: CacheService;
   documentsRepo: DocumentRepository;
   chatRepo: ChatRepository;
+  jobsRepo: IngestionJobRepository;
+  documentIntelligence: DocumentIntelligenceService;
   ragService: RagService;
   ingestDocumentService: IngestDocumentService;
   chatService: ChatService;
@@ -38,6 +45,16 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
   const cache: CacheService = new InMemoryCacheService();
   const documentsRepo: DocumentRepository = new PrismaDocumentRepository();
   const chatRepo: ChatRepository = new PrismaChatRepository();
+  const jobsRepo: IngestionJobRepository = new PrismaIngestionJobRepository();
+
+  const documentIntelligence: DocumentIntelligenceService =
+    env.DOCUMENT_INTELLIGENCE_PROVIDER === "azure"
+      ? new AzureDocumentIntelligenceService({
+          endpoint: env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT,
+          apiKey: env.AZURE_DOCUMENT_INTELLIGENCE_API_KEY,
+          modelId: env.AZURE_DOCUMENT_INTELLIGENCE_MODEL
+        })
+      : new LocalDocumentIntelligenceService();
 
   const storage: StorageService =
     env.STORAGE_PROVIDER === "azure"
@@ -88,7 +105,9 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
     ai,
     search,
     storage,
-    documentsRepo
+    documentsRepo,
+    jobsRepo,
+    documentIntelligence
   });
   const chatService = new ChatService({ chatRepo, ragService });
   const authService = new AuthService({
@@ -106,6 +125,8 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
     cache,
     documentsRepo,
     chatRepo,
+    jobsRepo,
+    documentIntelligence,
     ragService,
     ingestDocumentService,
     chatService,

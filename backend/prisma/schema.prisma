@@ -17,9 +17,28 @@ model Document {
   createdAt   DateTime @default(now())
 
   chunks Chunk[]
+  ingestionJobs IngestionJob[]
 
   @@index([tenantId, createdAt(sort: Desc)])
   @@index([tenantId, filename])
+}
+
+model IngestionJob {
+  id          String   @id @default(uuid())
+  tenantId    String
+  documentId  String
+  filename    String
+  contentType String
+  status      String   @default("queued")
+  errorMessage String?
+  createdAt   DateTime @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([tenantId, documentId, createdAt(sort: Desc)])
 }
 
 model Chunk {

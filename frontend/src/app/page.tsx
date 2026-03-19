@@ -139,6 +139,7 @@ export default function HomePage() {
             <ChatShell
               onSourcesChange={(ids) => setSelectedSourceIds(ids)}
               selectedDocumentIds={selectedDocumentIds}
+              onSelectionChange={setSelectedDocumentIds}
             />
           </section>
           <section className="panel docs-panel">

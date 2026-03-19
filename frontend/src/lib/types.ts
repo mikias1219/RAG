@@ -43,3 +43,16 @@ export type PaginatedDocuments = {
   items: DocumentSummary[];
 };
 
+export type IngestionJob = {
+  id: string;
+  tenantId: string;
+  documentId: string;
+  filename: string;
+  contentType: string;
+  status: "queued" | "processing" | "indexed" | "failed" | string;
+  errorMessage?: string | null;
+  createdAt: string;
+  startedAt?: string | null;
+  completedAt?: string | null;
+};
+

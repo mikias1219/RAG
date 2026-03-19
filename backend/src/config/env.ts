@@ -25,6 +25,11 @@ const envSchema = z.object({
   AZURE_AI_SEARCH_API_KEY: z.string().optional(),
   AZURE_AI_SEARCH_INDEX: z.string().default("doc-chunks"),
 
+  DOCUMENT_INTELLIGENCE_PROVIDER: z.enum(["azure", "none"]).default("none"),
+  AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT: z.string().optional(),
+  AZURE_DOCUMENT_INTELLIGENCE_API_KEY: z.string().optional(),
+  AZURE_DOCUMENT_INTELLIGENCE_MODEL: z.string().default("prebuilt-layout"),
+
   AI_PROVIDER: z.enum(["azure-openai", "local"]).default("azure-openai"),
   AZURE_OPENAI_ENDPOINT: z.string().optional(),
   AZURE_OPENAI_API_KEY: z.string().optional(),

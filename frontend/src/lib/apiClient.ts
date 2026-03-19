@@ -1,4 +1,4 @@
-import type { ChatResponse, PaginatedDocuments } from "./types";
+import type { ChatResponse, IngestionJob, PaginatedDocuments } from "./types";
 import { getAuthToken } from "./auth";
 
 const baseUrl = "/backend-api";
@@ -46,6 +46,23 @@ export async function listDocuments(page = 1, pageSize = 25): Promise<PaginatedD
   const res = await fetch(`${baseUrl}/documents?${params.toString()}`, {
     method: "GET",
     headers: authHeaders()
+  });
+  return handle(res);
+}
+
+export async function listIngestionJobs(limit = 50): Promise<{ items: IngestionJob[] }> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const res = await fetch(`${baseUrl}/documents/jobs?${params.toString()}`, {
+    method: "GET",
+    headers: authHeaders()
+  });
+  return handle(res);
+}
+
+export async function retryIngestionJob(jobId: string): Promise<{ jobId: string; status: string }> {
+  const res = await fetch(`${baseUrl}/documents/jobs/${jobId}/retry`, {
+    method: "POST",
+    headers: authHeaders({ "Content-Type": "application/json" })
   });
   return handle(res);
 }

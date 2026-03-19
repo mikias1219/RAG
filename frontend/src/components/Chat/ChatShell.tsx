@@ -1,27 +1,36 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ChatMessage, ChatResponse } from "@/lib/types";
-import { askQuestion } from "@/lib/apiClient";
+import type { ChatMessage, ChatResponse, DocumentSummary } from "@/lib/types";
+import { askQuestion, listDocuments } from "@/lib/apiClient";
 import { MessageList } from "./MessageList";
 import { MessageComposer } from "./MessageComposer";
 
 type Props = {
   onSourcesChange?: (documentIds: string[]) => void;
   selectedDocumentIds?: string[];
+  onSelectionChange?: (documentIds: string[]) => void;
 };
 
-export function ChatShell({ onSourcesChange, selectedDocumentIds = [] }: Props) {
+export function ChatShell({ onSourcesChange, selectedDocumentIds = [], onSelectionChange }: Props) {
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [docs, setDocs] = useState<DocumentSummary[]>([]);
+  const [selectorOpen, setSelectorOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
+
+  useEffect(() => {
+    void listDocuments(1, 200)
+      .then((res) => setDocs(res.items ?? []))
+      .catch(() => setDocs([]));
+  }, []);
 
   async function handleSend(text: string) {
     if (!text.trim()) return;
@@ -62,6 +71,40 @@ export function ChatShell({ onSourcesChange, selectedDocumentIds = [] }: Props) 
             Ask questions across your indexed documents
             {selectedDocumentIds.length > 0 ? ` (${selectedDocumentIds.length} selected)` : " (all documents)"}
           </p>
+          <div style={{ marginTop: 8, position: "relative" }}>
+            <button className="composer-send" onClick={() => setSelectorOpen((v) => !v)} type="button">
+              {selectedDocumentIds.length > 0 ? `Selected: ${selectedDocumentIds.length}` : "Select documents"}
+            </button>
+            {selectorOpen && (
+              <div className="dropdown-panel">
+                <button
+                  className="document-link"
+                  onClick={() => onSelectionChange?.([])}
+                  type="button"
+                >
+                  Use all documents
+                </button>
+                {docs.map((doc) => {
+                  const checked = selectedDocumentIds.includes(doc.id);
+                  return (
+                    <label key={doc.id} className="doc-select-label">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...selectedDocumentIds, doc.id]
+                            : selectedDocumentIds.filter((id) => id !== doc.id);
+                          onSelectionChange?.(Array.from(new Set(next)));
+                        }}
+                      />
+                      <span>{doc.filename}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
         {pending && <span className="pending-badge">Thinking...</span>}
       </div>

@@ -37,31 +37,59 @@ export function documentsController(container: Container) {
       if ((req.file as any).truncated) throw tooLarge("Upload exceeded MAX_UPLOAD_BYTES");
 
       const documentId = randomUUID();
+      const jobId = randomUUID();
       const contentType = req.file.mimetype || "application/octet-stream";
       const bytes = req.file.buffer;
       const filename = req.file.originalname || "upload";
 
-      let extractedText = "";
-      if (contentType.startsWith("text/")) {
-        extractedText = bytes.toString("utf8");
-      } else if (contentType === "application/json") {
-        extractedText = bytes.toString("utf8");
-      } else {
-        throw badRequest("Unsupported contentType. Use text/plain or application/json.", {
-          contentType
-        });
-      }
-
-      const result = await container.ingestDocumentService.ingest({
+      const result = await container.ingestDocumentService.enqueue({
           tenantId: auth.tenantId,
+        jobId,
         documentId,
         filename,
         contentType,
-        bytes,
-        extractedText
+        bytes
       });
 
-      res.status(201).json(result);
+      res.status(202).json(result);
+    })
+  );
+
+  router.get(
+    "/jobs",
+    asyncHandler(async (req, res) => {
+      const auth = (req as any).auth;
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+      const jobs = await container.ingestDocumentService.listJobs({
+        tenantId: auth.tenantId,
+        limit: Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 200) : 50
+      });
+      res.json({ items: jobs });
+    })
+  );
+
+  router.get(
+    "/jobs/:jobId",
+    asyncHandler(async (req, res) => {
+      const auth = (req as any).auth;
+      const job = await container.ingestDocumentService.getJob({
+        tenantId: auth.tenantId,
+        jobId: req.params.jobId
+      });
+      if (!job) throw badRequest("Job not found");
+      res.json(job);
+    })
+  );
+
+  router.post(
+    "/jobs/:jobId/retry",
+    asyncHandler(async (req, res) => {
+      const auth = (req as any).auth;
+      const result = await container.ingestDocumentService.retryJob({
+        tenantId: auth.tenantId,
+        jobId: req.params.jobId
+      });
+      res.json(result);
     })
   );
 

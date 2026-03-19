@@ -1,10 +1,12 @@
 "use client";
 
+"use client";
+
 import { useRef, useState } from "react";
 import { getAuthToken } from "@/lib/auth";
 
 type Props = {
-  onUploaded?: () => void;
+  onUploaded?: (jobId?: string) => void;
 };
 
 export function UploadDropzone({ onUploaded }: Props) {
@@ -31,7 +33,8 @@ export function UploadDropzone({ onUploaded }: Props) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error?.message ?? `Upload failed with ${res.status}`);
       }
-      if (onUploaded) onUploaded();
+      const body = await res.json().catch(() => ({}));
+      if (onUploaded) onUploaded(body?.jobId);
     } catch (e: any) {
       console.error(e);
       setError(e?.message ?? "Upload failed");
@@ -60,13 +63,13 @@ export function UploadDropzone({ onUploaded }: Props) {
         onClick={() => inputRef.current?.click()}
       >
         <p className="dropzone-title">Upload document</p>
-        <p className="dropzone-subtitle">Drag and drop or click to select a text or JSON file.</p>
+        <p className="dropzone-subtitle">Drag and drop or click to select text, JSON, PDF, or image files.</p>
         <p className="dropzone-note">Max size is controlled by backend configuration.</p>
         <input
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".txt,.json,text/plain,application/json"
+          accept=".txt,.json,.pdf,.png,.jpg,.jpeg,.tiff,text/plain,application/json,application/pdf,image/*"
           onChange={(e) => handleFiles(e.target.files)}
         />
       </div>
@@ -86,6 +89,18 @@ function normalizeUploadFile(file: File): File {
   }
   if (name.endsWith(".json")) {
     return new File([file], file.name, { type: "application/json" });
+  }
+  if (name.endsWith(".pdf")) {
+    return new File([file], file.name, { type: "application/pdf" });
+  }
+  if (name.endsWith(".png")) {
+    return new File([file], file.name, { type: "image/png" });
+  }
+  if (name.endsWith(".jpg") || name.endsWith(".jpeg")) {
+    return new File([file], file.name, { type: "image/jpeg" });
+  }
+  if (name.endsWith(".tiff") || name.endsWith(".tif")) {
+    return new File([file], file.name, { type: "image/tiff" });
   }
   return file;
 }

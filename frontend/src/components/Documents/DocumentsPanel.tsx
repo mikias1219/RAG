@@ -1,6 +1,8 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import type { DocumentSummary } from "@/lib/types";
-import { listDocuments } from "@/lib/apiClient";
+import type { DocumentSummary, IngestionJob } from "@/lib/types";
+import { listDocuments, listIngestionJobs, retryIngestionJob } from "@/lib/apiClient";
 import { UploadDropzone } from "./UploadDropzone";
 
 type Props = {
@@ -15,6 +17,7 @@ export function DocumentsPanel({
   onSelectionChange
 }: Props) {
   const [docs, setDocs] = useState<DocumentSummary[]>([]);
+  const [jobs, setJobs] = useState<IngestionJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,6 +27,8 @@ export function DocumentsPanel({
     try {
       const result = await listDocuments();
       setDocs(result.items);
+      const jobsResult = await listIngestionJobs();
+      setJobs(jobsResult.items ?? []);
     } catch (e: any) {
       console.error(e);
       setError(e?.message ?? "Failed to load documents");
@@ -47,7 +52,7 @@ export function DocumentsPanel({
       </div>
 
       <div className="docs-content">
-        <UploadDropzone onUploaded={refresh} />
+        <UploadDropzone onUploaded={() => void refresh()} />
 
         {error && <p className="error-text">{error}</p>}
 
@@ -78,6 +83,33 @@ export function DocumentsPanel({
         </div>
 
         <div className="documents-list">
+          <div className="collection-box">
+            <h3 className="collection-title">Ingestion Jobs</h3>
+            <div className="collection-list">
+              {jobs.slice(0, 10).map((job) => (
+                <div key={job.id} className="collection-item">
+                  <span>
+                    {job.filename} - {job.status}
+                    {job.errorMessage ? ` (${job.errorMessage})` : ""}
+                  </span>
+                  {job.status === "failed" ? (
+                    <button
+                      className="document-link"
+                      onClick={async () => {
+                        await retryIngestionJob(job.id);
+                        await refresh();
+                      }}
+                    >
+                      Retry
+                    </button>
+                  ) : (
+                    <span>{new Date(job.createdAt).toLocaleTimeString()}</span>
+                  )}
+                </div>
+              ))}
+              {jobs.length === 0 && <p className="muted-text">No ingestion jobs yet.</p>}
+            </div>
+          </div>
           <div className="selection-toolbar">
             <button
               className="composer-send"
