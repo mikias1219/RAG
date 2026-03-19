@@ -1,6 +1,6 @@
 import type { ChatResponse, PaginatedDocuments } from "./types";
 
-const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL!;
+const baseUrl = "/backend-api";
 
 async function handle(res: Response) {
   if (!res.ok) {

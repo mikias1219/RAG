@@ -18,10 +18,9 @@ export function UploadDropzone({ onUploaded }: Props) {
     setUploading(true);
     try {
       const file = files[0];
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL!;
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch(`${baseUrl}/documents/upload`, {
+      const res = await fetch(`/backend-api/documents/upload`, {
         method: "POST",
         body: form
       });
