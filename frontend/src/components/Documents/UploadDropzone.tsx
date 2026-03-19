@@ -39,11 +39,9 @@ export function UploadDropzone({ onUploaded }: Props) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="upload-wrap">
       <div
-        className={`flex cursor-pointer flex-col items-center justify-center rounded-md border border-dashed px-4 py-6 text-center text-xs ${
-          dragOver ? "border-indigo-400 bg-slate-900/70" : "border-slate-700 bg-slate-950/50"
-        }`}
+        className={`dropzone ${dragOver ? "drag-over" : ""}`}
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);
@@ -59,11 +57,9 @@ export function UploadDropzone({ onUploaded }: Props) {
         }}
         onClick={() => inputRef.current?.click()}
       >
-        <p className="mb-1 font-medium text-slate-100">Upload document</p>
-        <p className="mb-2 text-[11px] text-slate-400">
-          Drag &amp; drop or click to select a text or JSON file.
-        </p>
-        <p className="text-[10px] text-slate-500">Max size is set by backend config.</p>
+        <p className="dropzone-title">Upload document</p>
+        <p className="dropzone-subtitle">Drag and drop or click to select a text or JSON file.</p>
+        <p className="dropzone-note">Max size is controlled by backend configuration.</p>
         <input
           ref={inputRef}
           type="file"
@@ -72,11 +68,9 @@ export function UploadDropzone({ onUploaded }: Props) {
           onChange={(e) => handleFiles(e.target.files)}
         />
       </div>
-      {uploading && <p className="text-[11px] text-indigo-300">Uploading and indexing…</p>}
+      {uploading && <p className="info-text">Uploading and indexing...</p>}
       {error && (
-        <p className="text-[11px] text-red-300">
-          {error}
-        </p>
+        <p className="error-text">{error}</p>
       )}
     </div>
   );

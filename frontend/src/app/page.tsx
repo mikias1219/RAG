@@ -8,16 +8,38 @@ export default function HomePage() {
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
 
   return (
-    <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)] md:gap-6">
-      <section className="flex min-h-[480px] flex-col rounded-xl border border-slate-800 bg-slate-900/60 shadow-lg shadow-slate-950/50">
-        <ChatShell
-          onSourcesChange={(ids) => setSelectedSourceIds(ids)}
-        />
+    <div className="workspace">
+      <aside className="sidebar">
+        <div className="panel panel-compact">
+          <h2 className="panel-title">Navigation</h2>
+          <ul className="nav-list">
+            <li className="nav-item active">Chat Workspace</li>
+            <li className="nav-item">Documents</li>
+            <li className="nav-item">Collections</li>
+            <li className="nav-item">Settings</li>
+          </ul>
+        </div>
+        <div className="panel panel-compact">
+          <h2 className="panel-title">Platform</h2>
+          <div className="metric-grid">
+            <div className="metric-card">
+              <p className="metric-label">Mode</p>
+              <p className="metric-value">Production</p>
+            </div>
+            <div className="metric-card">
+              <p className="metric-label">Backend</p>
+              <p className="metric-value">Live</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <section className="panel chat-panel">
+        <ChatShell onSourcesChange={(ids) => setSelectedSourceIds(ids)} />
       </section>
-      <section className="flex min-h-[320px] flex-col rounded-xl border border-slate-800 bg-slate-900/40">
-        <DocumentsPanel
-          highlightedDocumentIds={selectedSourceIds}
-        />
+
+      <section className="panel docs-panel">
+        <DocumentsPanel highlightedDocumentIds={selectedSourceIds} />
       </section>
     </div>
   );

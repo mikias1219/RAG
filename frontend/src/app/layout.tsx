@@ -9,22 +9,32 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-950 text-slate-50">
-        <div className="flex min-h-screen flex-col">
-          <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
-            <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded bg-indigo-500" />
-                <span className="text-sm font-semibold tracking-tight text-slate-50">
-                  AI102 RAG SaaS
-                </span>
+      <body>
+        <div className="app-shell">
+          <header className="topbar">
+            <div className="container topbar-inner">
+              <div className="brand">
+                <div className="brand-mark" />
+                <div>
+                  <p className="brand-title">AI102 RAG Platform</p>
+                  <p className="brand-subtitle">Enterprise Knowledge Assistant</p>
+                </div>
               </div>
-              <span className="text-xs text-slate-400">Azure-native • Portable</span>
+              <div className="topbar-meta">
+                <span className="status-dot" />
+                <span>Azure-native and portable architecture</span>
+              </div>
             </div>
           </header>
-          <main className="flex-1">
-            <div className="mx-auto max-w-6xl px-4 py-4">{children}</div>
+          <main className="content">
+            <div className="container">{children}</div>
           </main>
+          <footer className="footer">
+            <div className="container footer-inner">
+              <span>Secure RAG workspace</span>
+              <span>Ready for scale</span>
+            </div>
+          </footer>
         </div>
       </body>
     </html>

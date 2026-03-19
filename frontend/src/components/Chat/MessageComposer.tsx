@@ -19,10 +19,10 @@ export function MessageComposer({ disabled, onSend }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-end gap-2">
+    <form onSubmit={handleSubmit} className="composer">
       <textarea
-        className="max-h-24 min-h-[40px] flex-1 resize-none rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500"
-        placeholder="Ask a question about your documents…"
+        className="composer-input"
+        placeholder="Ask a question about your documents..."
         value={value}
         onChange={(e) => setValue(e.target.value)}
         disabled={disabled}
@@ -30,7 +30,7 @@ export function MessageComposer({ disabled, onSend }: Props) {
       <button
         type="submit"
         disabled={disabled || value.trim().length === 0}
-        className="inline-flex h-8 items-center rounded-md bg-indigo-600 px-3 text-xs font-medium text-slate-50 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-700"
+        className="composer-send"
       >
         Send
       </button>

@@ -31,37 +31,60 @@ export function DocumentsPanel({ highlightedDocumentIds = [] }: Props) {
   }, []);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2">
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-slate-100">Documents</span>
-          <span className="text-xs text-slate-400">Uploaded sources used by RAG</span>
+    <div className="docs-shell">
+      <div className="docs-header">
+        <div>
+          <h2 className="panel-title">Documents</h2>
+          <p className="panel-subtitle">Storage, collections, and indexed knowledge sources</p>
         </div>
-        {loading && <span className="text-[11px] text-slate-400">Refreshing…</span>}
+        {loading && <span className="pending-badge">Refreshing...</span>}
       </div>
-      <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-3 text-xs">
+
+      <div className="docs-content">
         <UploadDropzone onUploaded={refresh} />
-        {error && <p className="text-[11px] text-red-300">{error}</p>}
-        <div className="mt-2 space-y-1">
+
+        {error && <p className="error-text">{error}</p>}
+
+        <div className="metric-grid">
+          <div className="metric-card">
+            <p className="metric-label">Total Documents</p>
+            <p className="metric-value">{docs.length}</p>
+          </div>
+          <div className="metric-card">
+            <p className="metric-label">Stored Size</p>
+            <p className="metric-value">
+              {formatBytes(docs.reduce((total, item) => total + item.sizeBytes, 0))}
+            </p>
+          </div>
+        </div>
+
+        <div className="collection-box">
+          <h3 className="collection-title">Collections</h3>
+          <div className="collection-list">
+            {groupByType(docs).map((group) => (
+              <div key={group.label} className="collection-item">
+                <span>{group.label}</span>
+                <strong>{group.count}</strong>
+              </div>
+            ))}
+            {docs.length === 0 && <p className="muted-text">Collections appear after uploads.</p>}
+          </div>
+        </div>
+
+        <div className="documents-list">
           {docs.length === 0 && !loading && (
-            <p className="text-[11px] text-slate-500">No documents uploaded yet.</p>
+            <p className="muted-text">No documents uploaded yet.</p>
           )}
           {docs.map((d) => {
             const highlighted = highlightedDocumentIds.includes(d.id);
             return (
               <div
                 key={d.id}
-                className={`flex items-center justify-between rounded-md border px-3 py-2 ${
-                  highlighted
-                    ? "border-amber-400 bg-amber-500/10"
-                    : "border-slate-800 bg-slate-950/40"
-                }`}
+                className={`document-item ${highlighted ? "highlighted" : ""}`}
               >
-                <div className="flex flex-col">
-                  <span className="max-w-[200px] truncate text-[11px] font-medium text-slate-100">
-                    {d.filename}
-                  </span>
-                  <span className="text-[10px] text-slate-500">
+                <div className="document-meta">
+                  <span className="document-name">{d.filename}</span>
+                  <span className="document-subline">
                     {formatBytes(d.sizeBytes)} • {new Date(d.createdAt).toLocaleString()}
                   </span>
                 </div>
@@ -69,7 +92,7 @@ export function DocumentsPanel({ highlightedDocumentIds = [] }: Props) {
                   href={d.blobUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[10px] font-medium text-indigo-300 hover:text-indigo-200"
+                  className="document-link"
                 >
                   Open
                 </a>
@@ -88,5 +111,17 @@ function formatBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   const value = bytes / Math.pow(1024, i);
   return `${value.toFixed(1)} ${units[i]}`;
+}
+
+function groupByType(docs: DocumentSummary[]): Array<{ label: string; count: number }> {
+  const map = new Map<string, number>();
+  for (const doc of docs) {
+    const key = doc.contentType || "unknown";
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+  return Array.from(map.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 4);
 }
 

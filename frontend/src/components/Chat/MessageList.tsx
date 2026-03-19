@@ -6,20 +6,14 @@ type Props = {
 
 export function MessageList({ messages }: Props) {
   return (
-    <div className="space-y-2 text-sm">
+    <div className="message-list">
       {messages.map((m) => (
-        <div key={m.id} className="flex">
-          <div
-            className={`max-w-[80%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
-              m.role === "user"
-                ? "ml-auto bg-indigo-600 text-slate-50"
-                : "mr-auto bg-slate-800 text-slate-50"
-            }`}
-          >
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-300">
+        <div key={m.id} className={`message-row ${m.role === "user" ? "is-user" : "is-assistant"}`}>
+          <div className={`message-bubble ${m.role === "user" ? "bubble-user" : "bubble-assistant"}`}>
+            <div className="message-role">
               {m.role === "user" ? "You" : "Assistant"}
             </div>
-            <div className="whitespace-pre-wrap">{m.content}</div>
+            <div className="message-content">{m.content}</div>
           </div>
         </div>
       ))}

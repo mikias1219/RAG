@@ -49,28 +49,29 @@ export function ChatShell({ onSourcesChange }: Props) {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2">
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-slate-100">Chat</span>
-          <span className="text-xs text-slate-400">RAG over your uploaded documents</span>
+    <div className="chat-shell">
+      <div className="chat-header">
+        <div>
+          <h2 className="panel-title">AI Assistant</h2>
+          <p className="panel-subtitle">Ask questions across your indexed documents</p>
         </div>
-        {pending && <span className="text-xs text-amber-300">Thinking…</span>}
+        {pending && <span className="pending-badge">Thinking...</span>}
       </div>
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+
+      <div ref={scrollRef} className="chat-stream">
         <MessageList messages={messages} />
         {error && (
-          <div className="rounded border border-red-700 bg-red-950/60 px-3 py-2 text-xs text-red-100">
-            {error}
-          </div>
+          <div className="alert-error">{error}</div>
         )}
         {messages.length === 0 && !pending && (
-          <div className="mt-10 text-center text-xs text-slate-500">
-            Upload a document and then ask a question about it.
+          <div className="empty-state">
+            <p>Ready to chat.</p>
+            <p>Upload documents on the right, then ask a question.</p>
           </div>
         )}
       </div>
-      <div className="border-t border-slate-800 bg-slate-900/80 px-3 py-2">
+
+      <div className="chat-composer-wrap">
         <MessageComposer disabled={pending} onSend={handleSend} />
       </div>
     </div>
