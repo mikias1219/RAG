@@ -67,7 +67,7 @@ export class AuthService {
 
     const ok = await bcrypt.compare(input.password, user.passwordHash);
     if (!ok) throw unauthorized("Invalid email or password");
-    if (user.status !== "approved" && user.role !== "admin") {
+    if (user.status !== "approved" && user.role !== "admin" && user.role !== "superadmin") {
       throw unauthorized("Your account is pending admin approval");
     }
     return this.issueToken(this.toAuthUser(user));
@@ -107,7 +107,7 @@ export class AuthService {
       });
     }
 
-    if (user.status !== "approved" && user.role !== "admin") {
+    if (user.status !== "approved" && user.role !== "admin" && user.role !== "superadmin") {
       throw unauthorized("Your account is pending admin approval");
     }
     return this.issueToken(this.toAuthUser(user));
@@ -130,8 +130,16 @@ export class AuthService {
 
   async setUserStatus(input: { tenantId: string; userId: string; status: "approved" | "rejected" }) {
     const updated = await this.prisma.user.updateMany({
-      where: { id: input.userId, tenantId: input.tenantId, role: { not: "admin" } },
+      where: { id: input.userId, tenantId: input.tenantId, role: { notIn: ["admin", "superadmin"] } },
       data: { status: input.status }
+    });
+    if (updated.count === 0) throw badRequest("User not found");
+  }
+
+  async setUserRole(input: { tenantId: string; userId: string; role: "user" | "admin" }) {
+    const updated = await this.prisma.user.updateMany({
+      where: { id: input.userId, tenantId: input.tenantId, role: { not: "superadmin" } },
+      data: { role: input.role }
     });
     if (updated.count === 0) throw badRequest("User not found");
   }

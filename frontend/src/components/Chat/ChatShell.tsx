@@ -8,9 +8,10 @@ import { MessageComposer } from "./MessageComposer";
 
 type Props = {
   onSourcesChange?: (documentIds: string[]) => void;
+  selectedDocumentIds?: string[];
 };
 
-export function ChatShell({ onSourcesChange }: Props) {
+export function ChatShell({ onSourcesChange, selectedDocumentIds = [] }: Props) {
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pending, setPending] = useState(false);
@@ -29,7 +30,11 @@ export function ChatShell({ onSourcesChange }: Props) {
     setMessages((prev) => [...prev, userMsg]);
     setPending(true);
     try {
-      const res: ChatResponse = await askQuestion({ question: text, sessionId });
+      const res: ChatResponse = await askQuestion({
+        question: text,
+        sessionId,
+        documentIds: selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined
+      });
       setSessionId(res.sessionId);
       const assistantMsg: ChatMessage = {
         id: crypto.randomUUID(),
@@ -53,7 +58,10 @@ export function ChatShell({ onSourcesChange }: Props) {
       <div className="chat-header">
         <div>
           <h2 className="panel-title">AI Assistant</h2>
-          <p className="panel-subtitle">Ask questions across your indexed documents</p>
+          <p className="panel-subtitle">
+            Ask questions across your indexed documents
+            {selectedDocumentIds.length > 0 ? ` (${selectedDocumentIds.length} selected)` : " (all documents)"}
+          </p>
         </div>
         {pending && <span className="pending-badge">Thinking...</span>}
       </div>

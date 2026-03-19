@@ -25,6 +25,10 @@ const statusSchema = z.object({
   status: z.enum(["approved", "rejected"])
 });
 
+const roleSchema = z.object({
+  role: z.enum(["user", "admin"])
+});
+
 const meUpdateSchema = z.object({
   displayName: z.string().min(1).max(120)
 });
@@ -113,7 +117,7 @@ export function authController(container: Container) {
       const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
       if (!token) throw badRequest("Missing Bearer token");
       const auth = container.authService.verifyToken(token);
-      if (auth.role !== "admin") throw badRequest("Admin access required");
+      if (auth.role !== "superadmin") throw badRequest("Superadmin access required");
       const users = await container.authService.listUsers({ tenantId });
       res.json({ items: users });
     })
@@ -126,7 +130,7 @@ export function authController(container: Container) {
       const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
       if (!token) throw badRequest("Missing Bearer token");
       const auth = container.authService.verifyToken(token);
-      if (auth.role !== "admin") throw badRequest("Admin access required");
+      if (auth.role !== "superadmin") throw badRequest("Superadmin access required");
 
       const parsed = statusSchema.safeParse(req.body);
       if (!parsed.success) throw badRequest("Invalid body", parsed.error.flatten());
@@ -134,6 +138,26 @@ export function authController(container: Container) {
         tenantId,
         userId: req.params.userId,
         status: parsed.data.status
+      });
+      res.status(204).send();
+    })
+  );
+
+  router.patch(
+    "/users/:userId/role",
+    asyncHandler(async (req, res) => {
+      const header = req.header("authorization");
+      const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
+      if (!token) throw badRequest("Missing Bearer token");
+      const auth = container.authService.verifyToken(token);
+      if (auth.role !== "superadmin") throw badRequest("Superadmin access required");
+
+      const parsed = roleSchema.safeParse(req.body);
+      if (!parsed.success) throw badRequest("Invalid body", parsed.error.flatten());
+      await container.authService.setUserRole({
+        tenantId,
+        userId: req.params.userId,
+        role: parsed.data.role
       });
       res.status(204).send();
     })

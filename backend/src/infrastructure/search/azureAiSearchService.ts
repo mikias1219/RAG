@@ -38,7 +38,12 @@ export class AzureAiSearchService implements SearchService {
     }
   }
 
-  async querySimilar(input: { tenantId: string; embedding: number[]; topK: number }): Promise<RetrievedChunk[]> {
+  async querySimilar(input: {
+    tenantId: string;
+    embedding: number[];
+    topK: number;
+    documentIds?: string[];
+  }): Promise<RetrievedChunk[]> {
     if (!input.embedding || input.embedding.length === 0) {
       throw new Error("Embedding vector is required");
     }
@@ -47,10 +52,16 @@ export class AzureAiSearchService implements SearchService {
       throw new Error("topK must be between 1 and 100");
     }
 
+    const docIds = (input.documentIds ?? []).filter(Boolean);
+    const documentFilter =
+      docIds.length > 0
+        ? ` and (${docIds.map((id) => `documentId eq '${escapeOData(id)}'`).join(" or ")})`
+        : "";
+
     const results = await withRetry(
       () =>
         this.client.search("*", {
-          filter: `tenantId eq '${escapeOData(input.tenantId)}'`,
+          filter: `tenantId eq '${escapeOData(input.tenantId)}'${documentFilter}`,
           top: input.topK,
           vectorSearchOptions: {
             queries: [

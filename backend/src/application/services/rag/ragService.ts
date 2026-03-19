@@ -16,8 +16,9 @@ export class RagService {
     }
   ) {}
 
-  async answerQuestion(input: { tenantId: string; question: string }) {
+  async answerQuestion(input: { tenantId: string; question: string; documentIds?: string[] }) {
     const { tenantId, question } = input;
+    const documentIds = Array.from(new Set((input.documentIds ?? []).filter(Boolean)));
 
     if (!question || question.trim().length === 0) {
       throw new Error("Question cannot be empty");
@@ -34,7 +35,7 @@ export class RagService {
       embedding = { vector: [] };
     }
 
-    const cacheKey = `rag:${tenantId}:${hashShort(question)}`;
+    const cacheKey = `rag:${tenantId}:${hashShort(question)}:${documentIds.sort().join(",")}`;
     const cached = await this.deps.cache.get<{ chunks: any[] }>(cacheKey).catch(() => null);
     
     const chunks =
@@ -46,7 +47,8 @@ export class RagService {
               this.deps.search.querySimilar({
                 tenantId,
                 embedding: embedding.vector,
-                topK: this.deps.topK
+                topK: this.deps.topK,
+                documentIds
               }),
             { maxAttempts: 2, delayMs: 500 }
           ).catch(() => []));
@@ -57,12 +59,16 @@ export class RagService {
       });
     }
 
-    const effectiveChunks = chunks.length > 0 ? chunks : await this.fallbackFromDb({ tenantId, question });
+    const effectiveChunks =
+      chunks.length > 0 ? chunks : await this.fallbackFromDb({ tenantId, question, documentIds });
 
     if (effectiveChunks.length === 0) {
+      const scopeMessage =
+        documentIds.length > 0
+          ? "No matching chunks were found in the selected documents."
+          : "I could not find matching indexed chunks for this question.";
       return {
-        answer:
-          "I could not find matching indexed chunks for this question. Upload documents or re-ingest content, then ask again with keywords from the document.",
+        answer: `${scopeMessage} Upload documents or select different sources, then ask again with keywords from the document.`,
         sources: []
       };
     }
@@ -111,15 +117,17 @@ export class RagService {
     };
   }
 
-  private async fallbackFromDb(input: { tenantId: string; question: string }) {
+  private async fallbackFromDb(input: { tenantId: string; question: string; documentIds?: string[] }) {
+    const documentIds = Array.from(new Set((input.documentIds ?? []).filter(Boolean)));
     const keywords = tokenize(input.question);
     if (keywords.length === 0) {
-      return this.recentChunks(input.tenantId);
+      return this.recentChunks(input.tenantId, documentIds);
     }
 
     const rows = await this.prisma.chunk.findMany({
       where: {
         tenantId: input.tenantId,
+        ...(documentIds.length > 0 ? { documentId: { in: documentIds } } : {}),
         OR: keywords.map((k) => ({ text: { contains: k, mode: "insensitive" } }))
       },
       include: { document: true },
@@ -136,12 +144,15 @@ export class RagService {
       source: { filename: r.document.filename, blobUrl: r.document.blobUrl }
     }));
     if (mapped.length > 0) return mapped;
-    return this.recentChunks(input.tenantId);
+    return this.recentChunks(input.tenantId, documentIds);
   }
 
-  private async recentChunks(tenantId: string) {
+  private async recentChunks(tenantId: string, documentIds: string[] = []) {
     const rows = await this.prisma.chunk.findMany({
-      where: { tenantId },
+      where: {
+        tenantId,
+        ...(documentIds.length > 0 ? { documentId: { in: documentIds } } : {})
+      },
       include: { document: true },
       take: this.deps.topK,
       orderBy: { createdAt: "desc" }

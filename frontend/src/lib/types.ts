@@ -27,6 +27,15 @@ export type DocumentSummary = {
   createdAt: string;
 };
 
+export type UserSummary = {
+  id: string;
+  email: string;
+  displayName?: string | null;
+  role: string;
+  status: string;
+  createdAt: string;
+};
+
 export type PaginatedDocuments = {
   page: number;
   pageSize: number;

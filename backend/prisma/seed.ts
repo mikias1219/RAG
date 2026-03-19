@@ -83,6 +83,18 @@ async function main() {
     ]
   });
 
+  await prismaUser.create({
+    data: {
+      id: "u_superadmin",
+      tenantId,
+      email: "superadmin@example.com",
+      displayName: "Super Admin",
+      role: "superadmin",
+      status: "approved",
+      passwordHash: await bcrypt.hash("SuperAdmin123!", 10)
+    }
+  });
+
   const admin = await prismaUser.create({
     data: {
       id: "u_admin",
@@ -135,6 +147,7 @@ async function main() {
 
   console.log("Seeding complete!");
   console.log("Sample tenant:", tenantId);
+  console.log("Superadmin login:", "superadmin@example.com / SuperAdmin123!");
   console.log("Admin login:", "admin@example.com / AdminPass123!");
   console.log("Demo login:", "demo@example.com / DemoPass123!");
   console.log("Documents:", [doc1.filename, doc2.filename]);

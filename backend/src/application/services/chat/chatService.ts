@@ -9,7 +9,13 @@ export class ChatService {
     }
   ) {}
 
-  async ask(input: { tenantId: string; userId: string; sessionId?: string; question: string }) {
+  async ask(input: {
+    tenantId: string;
+    userId: string;
+    sessionId?: string;
+    question: string;
+    documentIds?: string[];
+  }) {
     const session =
       input.sessionId ??
       (await this.deps.chatRepo.createSession({ tenantId: input.tenantId, userId: input.userId })).id;
@@ -23,7 +29,8 @@ export class ChatService {
 
     const result = await this.deps.ragService.answerQuestion({
       tenantId: input.tenantId,
-      question: input.question
+      question: input.question,
+      documentIds: input.documentIds
     });
 
     await this.deps.chatRepo.appendMessage({

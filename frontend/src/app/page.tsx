@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChatShell } from "@/components/Chat/ChatShell";
 import { DocumentsPanel } from "@/components/Documents/DocumentsPanel";
 import { clearAuthToken, getAuthToken } from "@/lib/auth";
-import { getMe, listUsers, updateMe, updateUserStatus } from "@/lib/apiClient";
+import { getMe, listUsers, updateMe, updateUserRole, updateUserStatus } from "@/lib/apiClient";
 
 type AppSection = "chat" | "documents" | "collections" | "profile" | "admin";
 
@@ -21,6 +21,7 @@ type UserRow = {
 export default function HomePage() {
   const router = useRouter();
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
@@ -99,7 +100,7 @@ export default function HomePage() {
             >
               Profile
             </li>
-            {userRole === "admin" && (
+            {userRole === "superadmin" && (
               <li className={`nav-item ${section === "admin" ? "active" : ""}`} onClick={() => setSection("admin")}>
                 Admin
               </li>
@@ -135,10 +136,17 @@ export default function HomePage() {
       {section === "chat" && (
         <>
           <section className="panel chat-panel">
-            <ChatShell onSourcesChange={(ids) => setSelectedSourceIds(ids)} />
+            <ChatShell
+              onSourcesChange={(ids) => setSelectedSourceIds(ids)}
+              selectedDocumentIds={selectedDocumentIds}
+            />
           </section>
           <section className="panel docs-panel">
-            <DocumentsPanel highlightedDocumentIds={selectedSourceIds} />
+            <DocumentsPanel
+              highlightedDocumentIds={selectedSourceIds}
+              selectedDocumentIds={selectedDocumentIds}
+              onSelectionChange={setSelectedDocumentIds}
+            />
           </section>
         </>
       )}
@@ -146,7 +154,11 @@ export default function HomePage() {
       {section === "documents" && (
         <>
           <section className="panel chat-panel">
-            <DocumentsPanel highlightedDocumentIds={selectedSourceIds} />
+            <DocumentsPanel
+              highlightedDocumentIds={selectedSourceIds}
+              selectedDocumentIds={selectedDocumentIds}
+              onSelectionChange={setSelectedDocumentIds}
+            />
           </section>
           <section className="panel docs-panel">
             <div className="panel panel-compact" style={{ minHeight: "100%" }}>
@@ -171,7 +183,11 @@ export default function HomePage() {
             </div>
           </section>
           <section className="panel docs-panel">
-            <DocumentsPanel highlightedDocumentIds={selectedSourceIds} />
+            <DocumentsPanel
+              highlightedDocumentIds={selectedSourceIds}
+              selectedDocumentIds={selectedDocumentIds}
+              onSelectionChange={setSelectedDocumentIds}
+            />
           </section>
         </>
       )}
@@ -247,7 +263,7 @@ export default function HomePage() {
           <section className="panel chat-panel">
             <div className="panel panel-compact" style={{ minHeight: "100%" }}>
               <h2 className="panel-title">User approvals</h2>
-              <p className="panel-subtitle">Approve or reject registrations before users access chat/docs.</p>
+              <p className="panel-subtitle">Superadmin controls account approval and admin roles.</p>
               <button className="composer-send" style={{ marginTop: 12 }} onClick={() => void refreshUsers()}>
                 {adminLoading ? "Refreshing..." : "Refresh"}
               </button>
@@ -260,7 +276,7 @@ export default function HomePage() {
                         {(u.displayName || "No name")} • {u.role} • {u.status}
                       </span>
                     </div>
-                    {u.role !== "admin" && (
+                    {u.role !== "superadmin" && (
                       <div style={{ display: "flex", gap: 8 }}>
                         <button
                           className="composer-send"
@@ -279,6 +295,15 @@ export default function HomePage() {
                           }}
                         >
                           Reject
+                        </button>
+                        <button
+                          className="composer-send"
+                          onClick={async () => {
+                            await updateUserRole(u.id, u.role === "admin" ? "user" : "admin");
+                            await refreshUsers();
+                          }}
+                        >
+                          {u.role === "admin" ? "Make user" : "Make admin"}
                         </button>
                       </div>
                     )}

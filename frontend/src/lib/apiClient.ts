@@ -25,7 +25,11 @@ function authHeaders(extra?: HeadersInit): HeadersInit {
   };
 }
 
-export async function askQuestion(input: { question: string; sessionId?: string }): Promise<ChatResponse> {
+export async function askQuestion(input: {
+  question: string;
+  sessionId?: string;
+  documentIds?: string[];
+}): Promise<ChatResponse> {
   const res = await fetch(`${baseUrl}/chat/ask`, {
     method: "POST",
     headers: authHeaders({ "Content-Type": "application/json" }),
@@ -110,6 +114,15 @@ export async function updateUserStatus(userId: string, status: "approved" | "rej
     method: "PATCH",
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ status })
+  });
+  return handle(res);
+}
+
+export async function updateUserRole(userId: string, role: "user" | "admin") {
+  const res = await fetch(`${baseUrl}/auth/users/${userId}/role`, {
+    method: "PATCH",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ role })
   });
   return handle(res);
 }

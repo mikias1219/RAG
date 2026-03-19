@@ -28,6 +28,11 @@ export type RetrievedChunk = {
 
 export interface SearchService {
   upsertChunks(input: { chunks: SearchChunkDoc[] }): Promise<void>;
-  querySimilar(input: { tenantId: string; embedding: number[]; topK: number }): Promise<RetrievedChunk[]>;
+  querySimilar(input: {
+    tenantId: string;
+    embedding: number[];
+    topK: number;
+    documentIds?: string[];
+  }): Promise<RetrievedChunk[]>;
 }
 

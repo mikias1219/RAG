@@ -6,7 +6,8 @@ import { asyncHandler } from "@/shared/utils/asyncHandler";
 
 const askSchema = z.object({
   sessionId: z.string().optional(),
-  question: z.string().min(1).max(8000)
+  question: z.string().min(1).max(8000),
+  documentIds: z.array(z.string().min(1)).max(50).optional()
 });
 
 export function chatController(container: Container) {
@@ -23,7 +24,8 @@ export function chatController(container: Container) {
           tenantId: auth.tenantId,
           userId: auth.id,
         sessionId: parsed.data.sessionId,
-        question: parsed.data.question
+        question: parsed.data.question,
+        documentIds: parsed.data.documentIds
       });
 
       res.json(result);

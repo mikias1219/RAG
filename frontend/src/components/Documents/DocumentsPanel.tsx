@@ -5,9 +5,15 @@ import { UploadDropzone } from "./UploadDropzone";
 
 type Props = {
   highlightedDocumentIds?: string[];
+  selectedDocumentIds?: string[];
+  onSelectionChange?: (documentIds: string[]) => void;
 };
 
-export function DocumentsPanel({ highlightedDocumentIds = [] }: Props) {
+export function DocumentsPanel({
+  highlightedDocumentIds = [],
+  selectedDocumentIds = [],
+  onSelectionChange
+}: Props) {
   const [docs, setDocs] = useState<DocumentSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,17 +78,44 @@ export function DocumentsPanel({ highlightedDocumentIds = [] }: Props) {
         </div>
 
         <div className="documents-list">
+          <div className="selection-toolbar">
+            <button
+              className="composer-send"
+              type="button"
+              disabled={docs.length === 0}
+              onClick={() => onSelectionChange?.(docs.map((d) => d.id))}
+            >
+              Select all
+            </button>
+            <button className="composer-send" type="button" onClick={() => onSelectionChange?.([])}>
+              Clear selection
+            </button>
+          </div>
           {docs.length === 0 && !loading && (
             <p className="muted-text">No documents uploaded yet.</p>
           )}
           {docs.map((d) => {
             const highlighted = highlightedDocumentIds.includes(d.id);
+            const selected = selectedDocumentIds.includes(d.id);
             return (
               <div
                 key={d.id}
-                className={`document-item ${highlighted ? "highlighted" : ""}`}
+                className={`document-item ${highlighted ? "highlighted" : ""} ${selected ? "selected" : ""}`}
               >
                 <div className="document-meta">
+                  <label className="doc-select-label">
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...selectedDocumentIds, d.id]
+                          : selectedDocumentIds.filter((id) => id !== d.id);
+                        onSelectionChange?.(Array.from(new Set(next)));
+                      }}
+                    />
+                    <span>Use in analysis</span>
+                  </label>
                   <span className="document-name">{d.filename}</span>
                   <span className="document-subline">
                     {formatBytes(d.sizeBytes)} • {new Date(d.createdAt).toLocaleString()}
