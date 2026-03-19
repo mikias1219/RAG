@@ -32,6 +32,20 @@ const meUpdateSchema = z.object({
 export function authController(container: Container) {
   const router = Router();
   const tenantId = "t_default";
+  const updateMeHandler = asyncHandler(async (req, res) => {
+    const header = req.header("authorization");
+    const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
+    if (!token) throw badRequest("Missing Bearer token");
+    const auth = container.authService.verifyToken(token);
+    const parsed = meUpdateSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest("Invalid body: displayName is required");
+    const updated = await container.authService.updateProfile({
+      tenantId: auth.tenantId,
+      userId: auth.id,
+      displayName: parsed.data.displayName
+    });
+    res.json({ user: updated });
+  });
 
   router.post(
     "/register",
@@ -89,23 +103,8 @@ export function authController(container: Container) {
     })
   );
 
-  router.patch(
-    "/me",
-    asyncHandler(async (req, res) => {
-      const header = req.header("authorization");
-      const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
-      if (!token) throw badRequest("Missing Bearer token");
-      const auth = container.authService.verifyToken(token);
-      const parsed = meUpdateSchema.safeParse(req.body);
-      if (!parsed.success) throw badRequest("Invalid body: displayName is required");
-      const updated = await container.authService.updateProfile({
-        tenantId: auth.tenantId,
-        userId: auth.id,
-        displayName: parsed.data.displayName
-      });
-      res.json({ user: updated });
-    })
-  );
+  router.patch("/me", updateMeHandler);
+  router.post("/me", updateMeHandler);
 
   router.get(
     "/users",

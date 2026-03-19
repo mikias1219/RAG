@@ -90,7 +90,7 @@ export async function getMe() {
 
 export async function updateMe(input: { displayName: string }) {
   const res = await fetch(`${baseUrl}/auth/me`, {
-    method: "PATCH",
+    method: "POST",
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(input)
   });
