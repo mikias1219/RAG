@@ -44,6 +44,16 @@ export class AuthService {
     });
     if (existing) throw badRequest("User with this email already exists");
 
+    const isSuperadminEmail = email === "superadmin@example.com";
+    let canBootstrapSuperadmin = false;
+    if (isSuperadminEmail) {
+      const existingSuperadmin = await this.prisma.user.findFirst({
+        where: { tenantId: input.tenantId, role: "superadmin" },
+        select: { id: true }
+      });
+      canBootstrapSuperadmin = !existingSuperadmin;
+    }
+
     const passwordHash = await bcrypt.hash(input.password, 10);
     const user = await this.prisma.user.create({
       data: {
@@ -51,8 +61,8 @@ export class AuthService {
         email,
         displayName: input.displayName?.trim() || null,
         passwordHash,
-        role: "user",
-        status: "pending"
+        role: canBootstrapSuperadmin ? "superadmin" : "user",
+        status: canBootstrapSuperadmin ? "approved" : "pending"
       }
     });
     return this.issueToken(this.toAuthUser(user));
