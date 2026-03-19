@@ -2,8 +2,10 @@ import type { AiService } from "@/domain/ports/aiService";
 import type { SearchService } from "@/domain/ports/searchService";
 import type { CacheService } from "@/domain/ports/cacheService";
 import { withRetry } from "@/shared/utils/retry";
+import { getPrisma } from "@/infrastructure/db/prismaClient";
 
 export class RagService {
+  private readonly prisma = getPrisma();
   constructor(
     private readonly deps: {
       ai: AiService;
@@ -46,7 +48,9 @@ export class RagService {
       });
     }
 
-    if (chunks.length === 0) {
+    const effectiveChunks = chunks.length > 0 ? chunks : await this.fallbackFromDb({ tenantId, question });
+
+    if (effectiveChunks.length === 0) {
       return {
         answer:
           "I could not find matching indexed chunks for this question. Upload documents or re-ingest content, then ask again with keywords from the document.",
@@ -63,7 +67,7 @@ export class RagService {
     ].join(" ");
 
     const context =
-      chunks
+      effectiveChunks
         .map(
           (c, i) =>
             `SOURCE ${i + 1}\nfilename: ${c.source.filename}\nurl: ${c.source.blobUrl}\ntext:\n${c.text}\n`
@@ -84,7 +88,7 @@ export class RagService {
 
     return {
       answer: completion.text,
-      sources: chunks.map((c) => ({
+      sources: effectiveChunks.map((c) => ({
         documentId: c.documentId,
         chunkId: c.chunkId,
         score: c.score,
@@ -92,6 +96,30 @@ export class RagService {
         url: c.source.blobUrl
       }))
     };
+  }
+
+  private async fallbackFromDb(input: { tenantId: string; question: string }) {
+    const keywords = tokenize(input.question);
+    if (keywords.length === 0) return [];
+
+    const rows = await this.prisma.chunk.findMany({
+      where: {
+        tenantId: input.tenantId,
+        OR: keywords.map((k) => ({ text: { contains: k, mode: "insensitive" } }))
+      },
+      include: { document: true },
+      take: this.deps.topK,
+      orderBy: { createdAt: "desc" }
+    });
+
+    return rows.map((r) => ({
+      chunkId: r.id,
+      documentId: r.documentId,
+      score: 0.1,
+      chunkIndex: r.chunkIndex,
+      text: r.text,
+      source: { filename: r.document.filename, blobUrl: r.document.blobUrl }
+    }));
   }
 }
 
@@ -103,5 +131,13 @@ function hashShort(s: string) {
     h = Math.imul(h, 16777619);
   }
   return (h >>> 0).toString(16);
+}
+
+function tokenize(text: string) {
+  const parts = text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/g)
+    .filter((w) => w.length >= 4);
+  return Array.from(new Set(parts)).slice(0, 8);
 }
 
