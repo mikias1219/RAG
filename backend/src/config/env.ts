@@ -4,6 +4,9 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(8080),
   LOG_LEVEL: z.string().default("info"),
+  JWT_SECRET: z.string().min(16).default("dev-only-change-this-secret"),
+  JWT_EXPIRES_IN: z.string().default("7d"),
+  GOOGLE_CLIENT_ID: z.string().optional(),
 
   DATABASE_URL: z.string().min(1),
 

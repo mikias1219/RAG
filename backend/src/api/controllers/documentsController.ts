@@ -9,8 +9,6 @@ import { asyncHandler } from "@/shared/utils/asyncHandler";
 export function documentsController(container: Container) {
   const router = Router();
 
-  const tenantId = "t_default";
-
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: container.env.MAX_UPLOAD_BYTES }
@@ -19,12 +17,13 @@ export function documentsController(container: Container) {
   router.get(
     "/",
     asyncHandler(async (req, res) => {
+        const auth = (req as any).auth;
       const pagination = toPagination({
         page: req.query.page ? Number(req.query.page) : undefined,
         pageSize: req.query.pageSize ? Number(req.query.pageSize) : undefined
       });
 
-      const result = await container.documentsRepo.listDocuments({ tenantId, pagination });
+        const result = await container.documentsRepo.listDocuments({ tenantId: auth.tenantId, pagination });
       res.json({ page: pagination.page, pageSize: pagination.pageSize, total: result.total, items: result.items });
     })
   );
@@ -33,6 +32,7 @@ export function documentsController(container: Container) {
     "/upload",
     upload.single("file"),
     asyncHandler(async (req, res) => {
+        const auth = (req as any).auth;
       if (!req.file) throw badRequest("Missing file");
       if ((req.file as any).truncated) throw tooLarge("Upload exceeded MAX_UPLOAD_BYTES");
 
@@ -53,7 +53,7 @@ export function documentsController(container: Container) {
       }
 
       const result = await container.ingestDocumentService.ingest({
-        tenantId,
+          tenantId: auth.tenantId,
         documentId,
         filename,
         contentType,

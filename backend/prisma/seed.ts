@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -10,6 +11,7 @@ async function main() {
   await prisma.chatSession.deleteMany();
   await prisma.chunk.deleteMany();
   await prisma.document.deleteMany();
+  await prisma.user.deleteMany();
 
   const tenantId = "t_default";
 
@@ -80,11 +82,21 @@ async function main() {
     ]
   });
 
+  const user = await prisma.user.create({
+    data: {
+      id: "u_default",
+      tenantId,
+      email: "demo@example.com",
+      displayName: "Demo User",
+      passwordHash: await bcrypt.hash("DemoPass123!", 10)
+    }
+  });
+
   // Seed a chat session
   const session = await prisma.chatSession.create({
     data: {
       tenantId,
-      userId: "u_default"
+      userId: user.id
     }
   });
 
@@ -108,6 +120,7 @@ async function main() {
 
   console.log("Seeding complete!");
   console.log("Sample tenant:", tenantId);
+  console.log("Demo login:", "demo@example.com / DemoPass123!");
   console.log("Documents:", [doc1.filename, doc2.filename]);
   console.log("Chat session:", session.id);
 }

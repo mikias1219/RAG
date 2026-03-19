@@ -15,6 +15,7 @@ import { PrismaChatRepository } from "@/infrastructure/db/repositories/chatRepos
 import { RagService } from "@/application/services/rag/ragService";
 import { IngestDocumentService } from "@/application/services/documents/ingestDocument";
 import { ChatService } from "@/application/services/chat/chatService";
+import { AuthService } from "@/application/services/auth/authService";
 
 export type Container = {
   logger: Logger;
@@ -28,6 +29,7 @@ export type Container = {
   ragService: RagService;
   ingestDocumentService: IngestDocumentService;
   chatService: ChatService;
+  authService: AuthService;
 };
 
 export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container {
@@ -89,6 +91,11 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
     documentsRepo
   });
   const chatService = new ChatService({ chatRepo, ragService });
+  const authService = new AuthService({
+    jwtSecret: env.JWT_SECRET,
+    jwtExpiresIn: env.JWT_EXPIRES_IN,
+    googleClientId: env.GOOGLE_CLIENT_ID
+  });
 
   return {
     logger,
@@ -101,7 +108,8 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
     chatRepo,
     ragService,
     ingestDocumentService,
-    chatService
+    chatService,
+    authService
   };
 }
 

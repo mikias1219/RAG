@@ -12,18 +12,16 @@ const askSchema = z.object({
 export function chatController(container: Container) {
   const router = Router();
 
-  const tenantId = "t_default";
-  const userId = "u_default";
-
   router.post(
     "/ask",
     asyncHandler(async (req, res) => {
+        const auth = (req as any).auth;
       const parsed = askSchema.safeParse(req.body);
       if (!parsed.success) throw badRequest("Invalid body", parsed.error.flatten());
 
       const result = await container.chatService.ask({
-        tenantId,
-        userId,
+          tenantId: auth.tenantId,
+          userId: auth.id,
         sessionId: parsed.data.sessionId,
         question: parsed.data.question
       });

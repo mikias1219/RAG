@@ -43,6 +43,7 @@ model ChatSession {
   userId    String
   createdAt DateTime @default(now())
 
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages ChatMessage[]
 
   @@index([tenantId, userId, createdAt(sort: Desc)])
@@ -59,5 +60,21 @@ model ChatMessage {
   session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, sessionId, createdAt(sort: Desc)])
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  email        String
+  displayName  String?
+  passwordHash String?
+  googleSub    String?
+  createdAt    DateTime @default(now())
+
+  sessions ChatSession[]
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, googleSub])
+  @@index([tenantId, createdAt(sort: Desc)])
 }
 

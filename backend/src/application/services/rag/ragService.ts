@@ -46,21 +46,29 @@ export class RagService {
       });
     }
 
+    if (chunks.length === 0) {
+      return {
+        answer:
+          "I could not find matching indexed chunks for this question. Upload documents or re-ingest content, then ask again with keywords from the document.",
+        sources: []
+      };
+    }
+
     const system = [
-      "You are a helpful assistant.",
-      "Answer using the provided sources when relevant.",
-      "If the sources do not contain enough information, say what is missing."
+      "You are a strict RAG assistant.",
+      "Use only the provided sources as ground truth.",
+      "Do not use external knowledge unless explicitly asked.",
+      "If evidence is insufficient, state what exact info is missing.",
+      "When possible, reference source numbers like [SOURCE 1]."
     ].join(" ");
 
     const context =
-      chunks.length > 0
-        ? chunks
-            .map(
-              (c, i) =>
-                `SOURCE ${i + 1}\nfilename: ${c.source.filename}\nurl: ${c.source.blobUrl}\ntext:\n${c.text}\n`
-            )
-            .join("\n")
-        : "No relevant sources found in the knowledge base.";
+      chunks
+        .map(
+          (c, i) =>
+            `SOURCE ${i + 1}\nfilename: ${c.source.filename}\nurl: ${c.source.blobUrl}\ntext:\n${c.text}\n`
+        )
+        .join("\n");
 
     const completion = await withRetry(
       () =>

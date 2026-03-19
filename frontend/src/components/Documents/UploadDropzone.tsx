@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { getAuthToken } from "@/lib/auth";
 
 type Props = {
   onUploaded?: () => void;
@@ -20,8 +21,10 @@ export function UploadDropzone({ onUploaded }: Props) {
       const file = normalizeUploadFile(files[0]);
       const form = new FormData();
       form.append("file", file);
+      const token = getAuthToken();
       const res = await fetch(`/backend-api/documents/upload`, {
         method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: form
       });
       if (!res.ok) {

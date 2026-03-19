@@ -1,11 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChatShell } from "@/components/Chat/ChatShell";
 import { DocumentsPanel } from "@/components/Documents/DocumentsPanel";
+import { clearAuthToken, getAuthToken } from "@/lib/auth";
+import { getMe } from "@/lib/apiClient";
 
 export default function HomePage() {
+  const router = useRouter();
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+  const [ready, setReady] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
+
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+    void getMe()
+      .then((res) => {
+        setUserEmail(res.user?.email ?? "");
+        setReady(true);
+      })
+      .catch(() => {
+        clearAuthToken();
+        router.replace("/login");
+      });
+  }, [router]);
+
+  if (!ready) {
+    return <div className="panel panel-compact">Checking session...</div>;
+  }
 
   return (
     <div className="workspace">
@@ -21,6 +48,7 @@ export default function HomePage() {
         </div>
         <div className="panel panel-compact">
           <h2 className="panel-title">Platform</h2>
+          <p className="muted-text" style={{ marginTop: 8 }}>{userEmail}</p>
           <div className="metric-grid">
             <div className="metric-card">
               <p className="metric-label">Mode</p>
@@ -31,6 +59,16 @@ export default function HomePage() {
               <p className="metric-value">Live</p>
             </div>
           </div>
+          <button
+            className="composer-send"
+            style={{ marginTop: 12, width: "100%" }}
+            onClick={() => {
+              clearAuthToken();
+              router.replace("/login");
+            }}
+          >
+            Logout
+          </button>
         </div>
       </aside>
 
