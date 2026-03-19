@@ -48,10 +48,6 @@ export default function HomePage() {
       });
   }, [router]);
 
-  if (!ready) {
-    return <div className="panel panel-compact">Checking session...</div>;
-  }
-
   async function refreshUsers() {
     if (userRole !== "admin") return;
     setAdminLoading(true);
@@ -66,6 +62,10 @@ export default function HomePage() {
   useEffect(() => {
     if (section === "admin") void refreshUsers();
   }, [section]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!ready) {
+    return <div className="panel panel-compact">Checking session...</div>;
+  }
 
   return (
     <div className="workspace">
