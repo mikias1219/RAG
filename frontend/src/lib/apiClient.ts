@@ -26,10 +26,11 @@ export async function askQuestion(input: { question: string; sessionId?: string 
 }
 
 export async function listDocuments(page = 1, pageSize = 25): Promise<PaginatedDocuments> {
-  const url = new URL(`${baseUrl}/documents`, "http://dummy");
-  url.searchParams.set("page", String(page));
-  url.searchParams.set("pageSize", String(pageSize));
-  const res = await fetch(url.toString().replace("http://dummy", baseUrl), {
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize)
+  });
+  const res = await fetch(`${baseUrl}/documents?${params.toString()}`, {
     method: "GET"
   });
   return handle(res);

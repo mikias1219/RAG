@@ -17,7 +17,7 @@ export function UploadDropzone({ onUploaded }: Props) {
     setError(null);
     setUploading(true);
     try {
-      const file = files[0];
+      const file = normalizeUploadFile(files[0]);
       const form = new FormData();
       form.append("file", file);
       const res = await fetch(`/backend-api/documents/upload`, {
@@ -63,7 +63,7 @@ export function UploadDropzone({ onUploaded }: Props) {
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".txt,.md,.json,text/plain,application/json"
+          accept=".txt,.json,text/plain,application/json"
           onChange={(e) => handleFiles(e.target.files)}
         />
       </div>
@@ -73,5 +73,17 @@ export function UploadDropzone({ onUploaded }: Props) {
       )}
     </div>
   );
+}
+
+function normalizeUploadFile(file: File): File {
+  const name = file.name.toLowerCase();
+  // Some browsers/devices provide empty or generic MIME for plain text files.
+  if (name.endsWith(".txt") || name.endsWith(".md")) {
+    return new File([file], file.name, { type: "text/plain" });
+  }
+  if (name.endsWith(".json")) {
+    return new File([file], file.name, { type: "application/json" });
+  }
+  return file;
 }
 
