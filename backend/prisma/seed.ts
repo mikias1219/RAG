@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+const prismaUser = (prisma as PrismaClient & { user: any }).user;
 
 async function main() {
   console.log("Seeding database...");
@@ -11,7 +12,7 @@ async function main() {
   await prisma.chatSession.deleteMany();
   await prisma.chunk.deleteMany();
   await prisma.document.deleteMany();
-  await prisma.user.deleteMany();
+  await prismaUser.deleteMany();
 
   const tenantId = "t_default";
 
@@ -82,7 +83,7 @@ async function main() {
     ]
   });
 
-  const admin = await prisma.user.create({
+  const admin = await prismaUser.create({
     data: {
       id: "u_admin",
       tenantId,
@@ -94,7 +95,7 @@ async function main() {
     }
   });
 
-  const user = await prisma.user.create({
+  const user = await prismaUser.create({
     data: {
       id: "u_default",
       tenantId,
