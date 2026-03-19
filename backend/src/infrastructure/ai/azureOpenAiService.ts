@@ -4,7 +4,8 @@ import { badRequest } from "@/domain/errors/AppError";
 import { withRetry } from "@/shared/utils/retry";
 
 export class AzureOpenAiService implements AiService {
-  private readonly client: OpenAI;
+  private readonly chatClient: OpenAI;
+  private readonly embeddingClient: OpenAI;
 
   constructor(
     private readonly opts: {
@@ -19,9 +20,21 @@ export class AzureOpenAiService implements AiService {
       throw badRequest("AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY are required when AI_PROVIDER=azure-openai");
     }
 
-    this.client = new OpenAI({
+    const endpoint = opts.endpoint.replace(/\/+$/, "");
+
+    // Azure OpenAI deployment-scoped endpoints:
+    // /openai/deployments/{deployment}/chat/completions
+    // /openai/deployments/{deployment}/embeddings
+    this.chatClient = new OpenAI({
       apiKey: opts.apiKey,
-      baseURL: `${opts.endpoint.replace(/\/+$/, "")}/openai`,
+      baseURL: `${endpoint}/openai/deployments/${opts.chatDeployment}`,
+      defaultQuery: { "api-version": opts.apiVersion },
+      defaultHeaders: { "api-key": opts.apiKey }
+    });
+
+    this.embeddingClient = new OpenAI({
+      apiKey: opts.apiKey,
+      baseURL: `${endpoint}/openai/deployments/${opts.embeddingDeployment}`,
       defaultQuery: { "api-version": opts.apiVersion },
       defaultHeaders: { "api-key": opts.apiKey }
     });
@@ -30,7 +43,7 @@ export class AzureOpenAiService implements AiService {
   async embedText(input: { text: string }): Promise<EmbeddingResult> {
     const res = await withRetry(
       () =>
-        this.client.embeddings.create({
+        this.embeddingClient.embeddings.create({
           model: this.opts.embeddingDeployment,
           input: input.text
         }),
@@ -52,7 +65,7 @@ export class AzureOpenAiService implements AiService {
 
     const res = await withRetry(
       () =>
-        this.client.chat.completions.create({
+        this.chatClient.chat.completions.create({
           model: this.opts.chatDeployment,
           messages: input.messages,
           temperature: 0.7,
