@@ -100,7 +100,9 @@ export class RagService {
 
   private async fallbackFromDb(input: { tenantId: string; question: string }) {
     const keywords = tokenize(input.question);
-    if (keywords.length === 0) return [];
+    if (keywords.length === 0) {
+      return this.recentChunks(input.tenantId);
+    }
 
     const rows = await this.prisma.chunk.findMany({
       where: {
@@ -112,10 +114,29 @@ export class RagService {
       orderBy: { createdAt: "desc" }
     });
 
-    return rows.map((r) => ({
+    const mapped = rows.map((r) => ({
       chunkId: r.id,
       documentId: r.documentId,
       score: 0.1,
+      chunkIndex: r.chunkIndex,
+      text: r.text,
+      source: { filename: r.document.filename, blobUrl: r.document.blobUrl }
+    }));
+    if (mapped.length > 0) return mapped;
+    return this.recentChunks(input.tenantId);
+  }
+
+  private async recentChunks(tenantId: string) {
+    const rows = await this.prisma.chunk.findMany({
+      where: { tenantId },
+      include: { document: true },
+      take: this.deps.topK,
+      orderBy: { createdAt: "desc" }
+    });
+    return rows.map((r) => ({
+      chunkId: r.id,
+      documentId: r.documentId,
+      score: 0.05,
       chunkIndex: r.chunkIndex,
       text: r.text,
       source: { filename: r.document.filename, blobUrl: r.document.blobUrl }

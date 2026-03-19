@@ -19,6 +19,10 @@ const googleSchema = z.object({
   idToken: z.string().min(1)
 });
 
+const statusSchema = z.object({
+  status: z.enum(["approved", "rejected"])
+});
+
 export function authController(container: Container) {
   const router = Router();
   const tenantId = "t_default";
@@ -73,6 +77,39 @@ export function authController(container: Container) {
       if (!token) throw badRequest("Missing Bearer token");
       const user = container.authService.verifyToken(token);
       res.json({ user });
+    })
+  );
+
+  router.get(
+    "/users",
+    asyncHandler(async (req, res) => {
+      const header = req.header("authorization");
+      const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
+      if (!token) throw badRequest("Missing Bearer token");
+      const auth = container.authService.verifyToken(token);
+      if (auth.role !== "admin") throw badRequest("Admin access required");
+      const users = await container.authService.listUsers({ tenantId });
+      res.json({ items: users });
+    })
+  );
+
+  router.patch(
+    "/users/:userId/status",
+    asyncHandler(async (req, res) => {
+      const header = req.header("authorization");
+      const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
+      if (!token) throw badRequest("Missing Bearer token");
+      const auth = container.authService.verifyToken(token);
+      if (auth.role !== "admin") throw badRequest("Admin access required");
+
+      const parsed = statusSchema.safeParse(req.body);
+      if (!parsed.success) throw badRequest("Invalid body", parsed.error.flatten());
+      await container.authService.setUserStatus({
+        tenantId,
+        userId: req.params.userId,
+        status: parsed.data.status
+      });
+      res.status(204).send();
     })
   );
 

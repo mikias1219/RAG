@@ -81,3 +81,20 @@ export async function getMe() {
   return handle(res);
 }
 
+export async function listUsers() {
+  const res = await fetch(`${baseUrl}/auth/users`, {
+    method: "GET",
+    headers: authHeaders()
+  });
+  return handle(res);
+}
+
+export async function updateUserStatus(userId: string, status: "approved" | "rejected") {
+  const res = await fetch(`${baseUrl}/auth/users/${userId}/status`, {
+    method: "PATCH",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ status })
+  });
+  return handle(res);
+}
+

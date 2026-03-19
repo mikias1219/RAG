@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { login, loginWithGoogle, register } from "@/lib/apiClient";
 import { setAuthToken } from "@/lib/auth";
@@ -11,7 +12,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [googleToken, setGoogleToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,11 +32,11 @@ export default function LoginPage() {
     }
   }
 
-  async function submitGoogle() {
+  async function submitGoogle(credential: string) {
     setLoading(true);
     setError(null);
     try {
-      const res = await loginWithGoogle(googleToken);
+      const res = await loginWithGoogle(credential);
       setAuthToken(res.token);
       router.replace("/");
     } catch (e: any) {
@@ -48,6 +48,7 @@ export default function LoginPage() {
 
   return (
     <div className="container" style={{ maxWidth: 520, paddingTop: 48 }}>
+      <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
       <div className="panel panel-compact">
         <h1 className="panel-title">Welcome</h1>
         <p className="panel-subtitle">Sign in to access your document workspace</p>
@@ -93,17 +94,29 @@ export default function LoginPage() {
         </div>
 
         <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
-          <p className="muted-text">Google sign-in (paste ID token)</p>
-          <input
-            className="composer-input"
-            placeholder="Google ID token"
-            value={googleToken}
-            onChange={(e) => setGoogleToken(e.target.value)}
-          />
+          <p className="muted-text">Continue with Google</p>
           <button
             className="composer-send"
-            onClick={submitGoogle}
-            disabled={loading || googleToken.trim().length === 0}
+            onClick={() => {
+              const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+              const google = (window as any).google;
+              if (!clientId || !google?.accounts?.id) {
+                setError("Google Sign-In not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID.");
+                return;
+              }
+              google.accounts.id.initialize({
+                client_id: clientId,
+                callback: (resp: { credential?: string }) => {
+                  if (!resp?.credential) {
+                    setError("Google authentication failed");
+                    return;
+                  }
+                  void submitGoogle(resp.credential);
+                }
+              });
+              google.accounts.id.prompt();
+            }}
+            disabled={loading}
             style={{ marginTop: 8 }}
           >
             Sign in with Google

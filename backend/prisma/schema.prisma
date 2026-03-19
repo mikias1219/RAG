@@ -69,6 +69,8 @@ model User {
   displayName  String?
   passwordHash String?
   googleSub    String?
+  role         String   @default("user")
+  status       String   @default("pending")
   createdAt    DateTime @default(now())
 
   sessions ChatSession[]

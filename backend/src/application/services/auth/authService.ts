@@ -10,6 +10,8 @@ type AuthUser = {
   tenantId: string;
   email: string;
   displayName?: string | null;
+  role: string;
+  status: string;
 };
 
 export class AuthService {
@@ -48,7 +50,9 @@ export class AuthService {
         tenantId: input.tenantId,
         email,
         displayName: input.displayName?.trim() || null,
-        passwordHash
+        passwordHash,
+        role: "user",
+        status: "pending"
       }
     });
     return this.issueToken(this.toAuthUser(user));
@@ -63,6 +67,9 @@ export class AuthService {
 
     const ok = await bcrypt.compare(input.password, user.passwordHash);
     if (!ok) throw unauthorized("Invalid email or password");
+    if (user.status !== "approved" && user.role !== "admin") {
+      throw unauthorized("Your account is pending admin approval");
+    }
     return this.issueToken(this.toAuthUser(user));
   }
 
@@ -88,7 +95,9 @@ export class AuthService {
           tenantId: input.tenantId,
           email,
           displayName: payload.name ?? null,
-          googleSub
+          googleSub,
+          role: "user",
+          status: "pending"
         }
       });
     } else if (!user.googleSub) {
@@ -98,7 +107,33 @@ export class AuthService {
       });
     }
 
+    if (user.status !== "approved" && user.role !== "admin") {
+      throw unauthorized("Your account is pending admin approval");
+    }
     return this.issueToken(this.toAuthUser(user));
+  }
+
+  async listUsers(input: { tenantId: string }) {
+    return this.prisma.user.findMany({
+      where: { tenantId: input.tenantId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        role: true,
+        status: true,
+        createdAt: true
+      }
+    });
+  }
+
+  async setUserStatus(input: { tenantId: string; userId: string; status: "approved" | "rejected" }) {
+    const updated = await this.prisma.user.updateMany({
+      where: { id: input.userId, tenantId: input.tenantId, role: { not: "admin" } },
+      data: { status: input.status }
+    });
+    if (updated.count === 0) throw badRequest("User not found");
   }
 
   verifyToken(token: string): AuthUser {
@@ -111,7 +146,9 @@ export class AuthService {
         id: decoded.id,
         tenantId: decoded.tenantId,
         email: decoded.email,
-        displayName: decoded.displayName ?? null
+        displayName: decoded.displayName ?? null,
+        role: decoded.role ?? "user",
+        status: decoded.status ?? "pending"
       };
     } catch {
       throw unauthorized("Invalid or expired auth token");
@@ -130,12 +167,16 @@ export class AuthService {
     tenantId: string;
     email: string;
     displayName: string | null;
+    role: string;
+    status: string;
   }): AuthUser {
     return {
       id: user.id,
       tenantId: user.tenantId,
       email: user.email,
-      displayName: user.displayName
+      displayName: user.displayName,
+      role: user.role,
+      status: user.status
     };
   }
 }
