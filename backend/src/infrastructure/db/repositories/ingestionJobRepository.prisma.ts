@@ -11,27 +11,40 @@ export class PrismaIngestionJobRepository implements IngestionJobRepository {
   async create(input: {
     id: string;
     tenantId: string;
+    workspaceId?: string | null;
     documentId: string;
     filename: string;
     contentType: string;
     status: "queued" | "processing" | "indexed" | "failed";
   }) {
     const created = await this.prismaIngestionJob.create({
-      data: input
+      data: {
+        ...input,
+        workspaceId: input.workspaceId ?? null
+      }
     });
     return created as IngestionJobRecord;
   }
 
-  async getById(input: { tenantId: string; jobId: string }) {
+  async getById(input: { tenantId: string; workspaceId?: string | null; jobId: string }) {
     const found = await this.prismaIngestionJob.findFirst({
-      where: { id: input.jobId, tenantId: input.tenantId }
+      where: {
+        id: input.jobId,
+        OR: input.workspaceId
+          ? [{ workspaceId: input.workspaceId }, { tenantId: input.tenantId, workspaceId: null }]
+          : [{ tenantId: input.tenantId }]
+      }
     });
     return (found as IngestionJobRecord) ?? null;
   }
 
-  async listByTenant(input: { tenantId: string; limit: number }) {
+  async listByTenant(input: { tenantId: string; workspaceId?: string | null; limit: number }) {
     const rows = await this.prismaIngestionJob.findMany({
-      where: { tenantId: input.tenantId },
+      where: input.workspaceId
+        ? {
+            OR: [{ workspaceId: input.workspaceId }, { tenantId: input.tenantId, workspaceId: null }]
+          }
+        : { tenantId: input.tenantId },
       orderBy: { createdAt: "desc" },
       take: input.limit
     });
@@ -40,6 +53,7 @@ export class PrismaIngestionJobRepository implements IngestionJobRepository {
 
   async setStatus(input: {
     tenantId: string;
+    workspaceId?: string | null;
     jobId: string;
     status: "queued" | "processing" | "indexed" | "failed";
     errorMessage?: string | null;
@@ -47,7 +61,12 @@ export class PrismaIngestionJobRepository implements IngestionJobRepository {
     setCompletedAt?: boolean;
   }) {
     await this.prismaIngestionJob.updateMany({
-      where: { id: input.jobId, tenantId: input.tenantId },
+      where: input.workspaceId
+        ? {
+            id: input.jobId,
+            OR: [{ workspaceId: input.workspaceId }, { tenantId: input.tenantId, workspaceId: null }]
+          }
+        : { id: input.jobId, tenantId: input.tenantId },
       data: {
         status: input.status,
         errorMessage: input.errorMessage ?? null,

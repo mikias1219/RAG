@@ -23,7 +23,11 @@ export function documentsController(container: Container) {
         pageSize: req.query.pageSize ? Number(req.query.pageSize) : undefined
       });
 
-        const result = await container.documentsRepo.listDocuments({ tenantId: auth.tenantId, pagination });
+        const result = await container.documentsRepo.listDocuments({
+          tenantId: auth.tenantId,
+          workspaceId: auth.workspaceId ?? null,
+          pagination
+        });
       res.json({ page: pagination.page, pageSize: pagination.pageSize, total: result.total, items: result.items });
     })
   );
@@ -44,6 +48,7 @@ export function documentsController(container: Container) {
 
       const result = await container.ingestDocumentService.enqueue({
           tenantId: auth.tenantId,
+        workspaceId: auth.workspaceId ?? null,
         jobId,
         documentId,
         filename,
@@ -62,6 +67,7 @@ export function documentsController(container: Container) {
       const limit = req.query.limit ? Number(req.query.limit) : 50;
       const jobs = await container.ingestDocumentService.listJobs({
         tenantId: auth.tenantId,
+        workspaceId: auth.workspaceId ?? null,
         limit: Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 200) : 50
       });
       res.json({ items: jobs });
@@ -74,6 +80,7 @@ export function documentsController(container: Container) {
       const auth = (req as any).auth;
       const job = await container.ingestDocumentService.getJob({
         tenantId: auth.tenantId,
+        workspaceId: auth.workspaceId ?? null,
         jobId: req.params.jobId
       });
       if (!job) throw badRequest("Job not found");
@@ -87,6 +94,7 @@ export function documentsController(container: Container) {
       const auth = (req as any).auth;
       const result = await container.ingestDocumentService.retryJob({
         tenantId: auth.tenantId,
+        workspaceId: auth.workspaceId ?? null,
         jobId: req.params.jobId
       });
       res.json(result);

@@ -22,6 +22,7 @@ export function chatController(container: Container) {
 
       const result = await container.chatService.ask({
           tenantId: auth.tenantId,
+          workspaceId: auth.workspaceId ?? null,
           userId: auth.id,
         sessionId: parsed.data.sessionId,
         question: parsed.data.question,

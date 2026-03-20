@@ -4,8 +4,17 @@ import type { Pagination } from "@/domain/valueObjects/Pagination";
 
 export interface DocumentRepository {
   createDocument(input: Omit<Document, "createdAt">): Promise<Document>;
-  listDocuments(input: { tenantId: string; pagination: Pagination }): Promise<{ items: Document[]; total: number }>;
-  createChunks(input: { tenantId: string; documentId: string; chunks: Array<Omit<Chunk, "createdAt">> }): Promise<void>;
-  getDocument(input: { tenantId: string; documentId: string }): Promise<Document | null>;
+  listDocuments(input: {
+    tenantId: string;
+    workspaceId?: string | null;
+    pagination: Pagination;
+  }): Promise<{ items: Document[]; total: number }>;
+  createChunks(input: {
+    tenantId: string;
+    workspaceId?: string | null;
+    documentId: string;
+    chunks: Array<Omit<Chunk, "createdAt">>;
+  }): Promise<void>;
+  getDocument(input: { tenantId: string; workspaceId?: string | null; documentId: string }): Promise<Document | null>;
 }
 

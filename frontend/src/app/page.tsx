@@ -4,8 +4,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChatShell } from "@/components/Chat/ChatShell";
 import { DocumentsPanel } from "@/components/Documents/DocumentsPanel";
-import { clearAuthToken, getAuthToken } from "@/lib/auth";
-import { getMe, listUsers, updateMe, updateUserRole, updateUserStatus } from "@/lib/apiClient";
+import { clearAuthToken, getAuthToken, setAuthToken } from "@/lib/auth";
+import {
+  getWorkspaceProfile,
+  getMe,
+  listUsers,
+  switchWorkspace,
+  updateWorkspaceProfile,
+  updateMe,
+  updateUserRole,
+  updateUserStatus
+} from "@/lib/apiClient";
+import type { WorkspaceSummary } from "@/lib/types";
 
 type AppSection = "chat" | "documents" | "collections" | "profile" | "admin";
 
@@ -17,6 +27,50 @@ type UserRow = {
   status: string;
   createdAt: string;
 };
+
+const AZURE_RESOURCE_USAGE: Array<{
+  service: string;
+  usage: string;
+  when: string;
+  tier: string;
+}> = [
+  {
+    service: "Azure Blob Storage",
+    usage: "Stores uploaded source documents",
+    when: "During upload and source access",
+    tier: "Standard"
+  },
+  {
+    service: "Azure AI Search",
+    usage: "Vector + keyword retrieval over indexed chunks",
+    when: "On each chat question",
+    tier: "Standard"
+  },
+  {
+    service: "Azure OpenAI",
+    usage: "Embeddings and grounded answer generation",
+    when: "During indexing and chat response",
+    tier: "Managed deployment"
+  },
+  {
+    service: "Azure Document Intelligence",
+    usage: "Extracts text from PDF/images",
+    when: "During ingestion of non-text files",
+    tier: "Standard (when enabled)"
+  },
+  {
+    service: "Azure PostgreSQL Flexible Server",
+    usage: "Stores users, workspaces, docs, chunks, sessions, jobs",
+    when: "Across all application operations",
+    tier: "Production DB SKU"
+  },
+  {
+    service: "Azure Container Apps",
+    usage: "Runs backend and frontend containers",
+    when: "Runtime hosting and scaling",
+    tier: "Consumption / dedicated profile"
+  }
+];
 
 export default function HomePage() {
   const router = useRouter();
@@ -33,6 +87,14 @@ export default function HomePage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>("");
+  const [switchingWorkspace, setSwitchingWorkspace] = useState(false);
+  const [workspaceIndustry, setWorkspaceIndustry] = useState<"general" | "banking" | "construction">("general");
+  const [workspaceDomainFocus, setWorkspaceDomainFocus] = useState("");
+  const [workspaceSaving, setWorkspaceSaving] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [workspaceSuccess, setWorkspaceSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -41,11 +103,18 @@ export default function HomePage() {
       return;
     }
     void getMe()
-      .then((res) => {
+      .then(async (res) => {
         setUserEmail(res.user?.email ?? "");
         setUserName(res.user?.displayName ?? "");
         setProfileNameDraft(res.user?.displayName ?? "");
         setUserRole(res.user?.role ?? "user");
+        setWorkspaces(res.workspaces ?? []);
+        setActiveWorkspaceId(res.user?.workspaceId ?? "");
+        const profile = await getWorkspaceProfile().catch(() => null);
+        if (profile?.workspace) {
+          setWorkspaceIndustry(profile.workspace.industry ?? "general");
+          setWorkspaceDomainFocus(profile.workspace.domainFocus ?? "");
+        }
         setReady(true);
       })
       .catch(() => {
@@ -120,6 +189,42 @@ export default function HomePage() {
               <p className="metric-value">Live</p>
             </div>
           </div>
+          <div style={{ marginTop: 12 }}>
+            <p className="metric-label">Workspace</p>
+            <select
+              className="composer-input"
+              style={{ marginTop: 8 }}
+              value={activeWorkspaceId}
+              disabled={switchingWorkspace || workspaces.length === 0}
+              onChange={async (e) => {
+                const nextWorkspaceId = e.target.value;
+                if (!nextWorkspaceId || nextWorkspaceId === activeWorkspaceId) return;
+                setSwitchingWorkspace(true);
+                try {
+                  const switched = await switchWorkspace(nextWorkspaceId);
+                  if (switched?.token) {
+                    setAuthToken(switched.token);
+                  }
+                  setActiveWorkspaceId(nextWorkspaceId);
+                  setSelectedDocumentIds([]);
+                  setSelectedSourceIds([]);
+                  const profile = await getWorkspaceProfile().catch(() => null);
+                  setWorkspaceIndustry(profile?.workspace?.industry ?? "general");
+                  setWorkspaceDomainFocus(profile?.workspace?.domainFocus ?? "");
+                } catch (error) {
+                  console.error(error);
+                } finally {
+                  setSwitchingWorkspace(false);
+                }
+              }}
+            >
+              {workspaces.map((ws) => (
+                <option key={ws.id} value={ws.id}>
+                  {ws.displayName} ({ws.slug})
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             className="composer-send"
             style={{ marginTop: 12, width: "100%" }}
@@ -163,8 +268,18 @@ export default function HomePage() {
           </section>
           <section className="panel docs-panel">
             <div className="panel panel-compact" style={{ minHeight: "100%" }}>
-              <h2 className="panel-title">Document storage</h2>
-              <p className="panel-subtitle">All uploaded files are stored in Azure Blob Storage (standard tier).</p>
+              <h2 className="panel-title">Azure resources in use</h2>
+              <p className="panel-subtitle">Selected services and where they are used in this flow.</p>
+              <div className="resource-list">
+                {AZURE_RESOURCE_USAGE.map((item) => (
+                  <div key={item.service} className="resource-item">
+                    <p className="resource-service">{item.service}</p>
+                    <p className="resource-usage">{item.usage}</p>
+                    <p className="resource-when">When: {item.when}</p>
+                    <p className="resource-tier">Tier: {item.tier}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         </>
@@ -247,6 +362,53 @@ export default function HomePage() {
                 </button>
                 {profileError && <p className="error-text" style={{ marginTop: 8 }}>{profileError}</p>}
                 {profileSuccess && <p className="info-text" style={{ marginTop: 8 }}>{profileSuccess}</p>}
+              </div>
+              <div style={{ marginTop: 18 }}>
+                <p className="metric-label">Workspace industry profile</p>
+                <select
+                  className="composer-input"
+                  value={workspaceIndustry}
+                  onChange={(e) => setWorkspaceIndustry(e.target.value as "general" | "banking" | "construction")}
+                  style={{ marginTop: 8 }}
+                  disabled={!["admin", "superadmin"].includes(userRole)}
+                >
+                  <option value="general">General Enterprise</option>
+                  <option value="banking">Banking</option>
+                  <option value="construction">Construction</option>
+                </select>
+                <input
+                  className="composer-input"
+                  value={workspaceDomainFocus}
+                  onChange={(e) => setWorkspaceDomainFocus(e.target.value)}
+                  placeholder="Domain focus (e.g., Basel compliance, procurement claims, etc.)"
+                  style={{ marginTop: 8 }}
+                  disabled={!["admin", "superadmin"].includes(userRole)}
+                />
+                <button
+                  className="composer-send"
+                  style={{ marginTop: 10 }}
+                  disabled={workspaceSaving || !["admin", "superadmin"].includes(userRole)}
+                  onClick={async () => {
+                    setWorkspaceSaving(true);
+                    setWorkspaceError(null);
+                    setWorkspaceSuccess(null);
+                    try {
+                      await updateWorkspaceProfile({
+                        industry: workspaceIndustry,
+                        domainFocus: workspaceDomainFocus.trim()
+                      });
+                      setWorkspaceSuccess("Workspace profile updated");
+                    } catch (e: any) {
+                      setWorkspaceError(e?.message ?? "Failed to update workspace profile");
+                    } finally {
+                      setWorkspaceSaving(false);
+                    }
+                  }}
+                >
+                  {workspaceSaving ? "Saving..." : "Save workspace profile"}
+                </button>
+                {workspaceError && <p className="error-text" style={{ marginTop: 8 }}>{workspaceError}</p>}
+                {workspaceSuccess && <p className="info-text" style={{ marginTop: 8 }}>{workspaceSuccess}</p>}
               </div>
             </div>
           </section>

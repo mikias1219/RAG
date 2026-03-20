@@ -12,7 +12,7 @@ import { AzureOpenAiService } from "@/infrastructure/ai/azureOpenAiService";
 import { AzureAiSearchService } from "@/infrastructure/search/azureAiSearchService";
 import { AzureBlobStorageService } from "@/infrastructure/storage/azureBlobStorageService";
 import { InMemoryCacheService } from "@/infrastructure/cache/inMemoryCacheService";
-import { InMemoryIngestionJobRepository } from "@/infrastructure/cache/inMemoryIngestionJobRepository";
+import { PrismaIngestionJobRepository } from "@/infrastructure/db/repositories/ingestionJobRepository.prisma";
 import { PrismaDocumentRepository } from "@/infrastructure/db/repositories/documentRepository.prisma";
 import { PrismaChatRepository } from "@/infrastructure/db/repositories/chatRepository.prisma";
 import { AzureDocumentIntelligenceService } from "@/infrastructure/documentIntelligence/azureDocumentIntelligenceService";
@@ -45,7 +45,7 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
   const cache: CacheService = new InMemoryCacheService();
   const documentsRepo: DocumentRepository = new PrismaDocumentRepository();
   const chatRepo: ChatRepository = new PrismaChatRepository();
-  const jobsRepo: IngestionJobRepository = new InMemoryIngestionJobRepository();
+  const jobsRepo: IngestionJobRepository = new PrismaIngestionJobRepository();
 
   const documentIntelligence: DocumentIntelligenceService =
     env.DOCUMENT_INTELLIGENCE_PROVIDER === "azure"

@@ -36,6 +36,17 @@ export type UserSummary = {
   createdAt: string;
 };
 
+export type WorkspaceSummary = {
+  id: string;
+  tenantId: string;
+  companyId: string;
+  slug: string;
+  displayName: string;
+  membershipRole: string;
+  industry?: string;
+  domainFocus?: string | null;
+};
+
 export type PaginatedDocuments = {
   page: number;
   pageSize: number;

@@ -403,6 +403,33 @@ a {
   gap: 8px;
 }
 
+.resource-list {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.resource-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  background: #101933;
+}
+
+.resource-service {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.resource-usage,
+.resource-when,
+.resource-tier {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
 .selection-toolbar {
   display: flex;
   gap: 8px;

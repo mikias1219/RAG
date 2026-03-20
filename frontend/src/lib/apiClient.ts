@@ -1,4 +1,4 @@
-import type { ChatResponse, IngestionJob, PaginatedDocuments } from "./types";
+import type { ChatResponse, IngestionJob, PaginatedDocuments, WorkspaceSummary } from "./types";
 import { getAuthToken } from "./auth";
 
 const baseUrl = "/backend-api";
@@ -105,6 +105,43 @@ export async function getMe() {
   const res = await fetch(`${baseUrl}/auth/me`, {
     method: "GET",
     headers: authHeaders()
+  });
+  return handle(res);
+}
+
+export async function listWorkspaces(): Promise<{ items: WorkspaceSummary[] }> {
+  const res = await fetch(`${baseUrl}/auth/workspaces`, {
+    method: "GET",
+    headers: authHeaders()
+  });
+  return handle(res);
+}
+
+export async function switchWorkspace(workspaceId: string) {
+  const res = await fetch(`${baseUrl}/auth/switch-workspace`, {
+    method: "POST",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ workspaceId })
+  });
+  return handle(res);
+}
+
+export async function getWorkspaceProfile() {
+  const res = await fetch(`${baseUrl}/auth/workspace-profile`, {
+    method: "GET",
+    headers: authHeaders()
+  });
+  return handle(res);
+}
+
+export async function updateWorkspaceProfile(input: {
+  industry: "general" | "banking" | "construction";
+  domainFocus?: string;
+}) {
+  const res = await fetch(`${baseUrl}/auth/workspace-profile`, {
+    method: "PATCH",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(input)
   });
   return handle(res);
 }

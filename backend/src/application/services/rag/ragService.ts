@@ -16,8 +16,21 @@ export class RagService {
     }
   ) {}
 
-  async answerQuestion(input: { tenantId: string; question: string; documentIds?: string[] }) {
+  async answerQuestion(input: {
+    tenantId: string;
+    workspaceId?: string | null;
+    question: string;
+    documentIds?: string[];
+  }) {
     const { tenantId, question } = input;
+    const workspaceProfile = input.workspaceId
+      ? await this.prisma.workspace
+          .findFirst({
+            where: { id: input.workspaceId, tenantId },
+            select: { industry: true, domainFocus: true }
+          })
+          .catch(() => null)
+      : null;
     const documentIds = Array.from(new Set((input.documentIds ?? []).filter(Boolean)));
 
     if (!question || question.trim().length === 0) {
@@ -35,7 +48,7 @@ export class RagService {
       embedding = { vector: [] };
     }
 
-    const cacheKey = `rag:${tenantId}:${hashShort(question)}:${documentIds.sort().join(",")}`;
+    const cacheKey = `rag:${tenantId}:${input.workspaceId ?? "none"}:${hashShort(question)}:${documentIds.sort().join(",")}`;
     const cached = await this.deps.cache.get<{ chunks: any[] }>(cacheKey).catch(() => null);
     
     const chunks =
@@ -60,7 +73,14 @@ export class RagService {
     }
 
     const effectiveChunks =
-      chunks.length > 0 ? chunks : await this.fallbackFromDb({ tenantId, question, documentIds });
+      chunks.length > 0
+        ? chunks
+        : await this.fallbackFromDb({
+            tenantId,
+            workspaceId: input.workspaceId ?? null,
+            question,
+            documentIds
+          });
 
     if (effectiveChunks.length === 0) {
       const scopeMessage =
@@ -78,7 +98,8 @@ export class RagService {
       "Use only the provided sources as ground truth.",
       "Do not use external knowledge unless explicitly asked.",
       "If evidence is insufficient, state what exact info is missing.",
-      "When possible, reference source numbers like [SOURCE 1]."
+      "When possible, reference source numbers like [SOURCE 1].",
+      industryGuidance(workspaceProfile?.industry, workspaceProfile?.domainFocus)
     ].join(" ");
 
     const context =
@@ -117,16 +138,21 @@ export class RagService {
     };
   }
 
-  private async fallbackFromDb(input: { tenantId: string; question: string; documentIds?: string[] }) {
+  private async fallbackFromDb(input: {
+    tenantId: string;
+    workspaceId?: string | null;
+    question: string;
+    documentIds?: string[];
+  }) {
     const documentIds = Array.from(new Set((input.documentIds ?? []).filter(Boolean)));
     const keywords = tokenize(input.question);
     if (keywords.length === 0) {
-      return this.recentChunks(input.tenantId, documentIds);
+      return this.recentChunks(input.tenantId, input.workspaceId ?? null, documentIds);
     }
 
     const rows = await this.prisma.chunk.findMany({
       where: {
-        tenantId: input.tenantId,
+        ...workspaceCompatibleWhere(input.tenantId, input.workspaceId),
         ...(documentIds.length > 0 ? { documentId: { in: documentIds } } : {}),
         OR: keywords.map((k) => ({ text: { contains: k, mode: "insensitive" } }))
       },
@@ -144,13 +170,13 @@ export class RagService {
       source: { filename: r.document.filename, blobUrl: r.document.blobUrl }
     }));
     if (mapped.length > 0) return mapped;
-    return this.recentChunks(input.tenantId, documentIds);
+    return this.recentChunks(input.tenantId, input.workspaceId ?? null, documentIds);
   }
 
-  private async recentChunks(tenantId: string, documentIds: string[] = []) {
+  private async recentChunks(tenantId: string, workspaceId: string | null = null, documentIds: string[] = []) {
     const rows = await this.prisma.chunk.findMany({
       where: {
-        tenantId,
+        ...workspaceCompatibleWhere(tenantId, workspaceId),
         ...(documentIds.length > 0 ? { documentId: { in: documentIds } } : {})
       },
       include: { document: true },
@@ -184,5 +210,22 @@ function tokenize(text: string) {
     .split(/[^a-z0-9]+/g)
     .filter((w) => w.length >= 4);
   return Array.from(new Set(parts)).slice(0, 8);
+}
+
+function industryGuidance(industry?: string | null, domainFocus?: string | null) {
+  if (industry === "banking") {
+    return `Prioritize financial risk, compliance, auditability, and customer-impact framing. ${domainFocus ? `Workspace focus: ${domainFocus}.` : ""}`;
+  }
+  if (industry === "construction") {
+    return `Prioritize project delivery, safety, contract scope, procurement, and schedule risk framing. ${domainFocus ? `Workspace focus: ${domainFocus}.` : ""}`;
+  }
+  return domainFocus ? `Workspace focus: ${domainFocus}.` : "Keep responses practical for enterprise document workflows.";
+}
+
+function workspaceCompatibleWhere(tenantId: string, workspaceId?: string | null) {
+  if (!workspaceId) return { tenantId };
+  return {
+    OR: [{ workspaceId }, { tenantId, workspaceId: null }]
+  };
 }
 

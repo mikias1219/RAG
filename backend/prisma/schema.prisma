@@ -7,9 +7,57 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Company {
+  id        String      @id @default(uuid())
+  tenantId  String      @unique
+  name      String
+  createdAt DateTime    @default(now())
+
+  workspaces Workspace[]
+}
+
+model Workspace {
+  id          String            @id @default(uuid())
+  companyId   String
+  tenantId    String
+  slug        String
+  displayName String
+  industry    String            @default("general")
+  domainFocus String?
+  createdAt   DateTime          @default(now())
+
+  company     Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  members     WorkspaceMember[]
+  users       User[]
+  documents   Document[]
+  chunks      Chunk[]
+  chatSessions ChatSession[]
+  chatMessages ChatMessage[]
+  ingestionJobs IngestionJob[]
+
+  @@unique([tenantId, slug])
+  @@index([companyId, createdAt(sort: Desc)])
+}
+
+model WorkspaceMember {
+  id          String    @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        String    @default("user")
+  status      String    @default("active")
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
 model Document {
   id          String   @id @default(uuid())
   tenantId    String
+  workspaceId String?
   filename    String
   contentType String
   blobUrl     String
@@ -18,14 +66,17 @@ model Document {
 
   chunks Chunk[]
   ingestionJobs IngestionJob[]
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, createdAt(sort: Desc)])
+  @@index([workspaceId, createdAt(sort: Desc)])
   @@index([tenantId, filename])
 }
 
 model IngestionJob {
   id          String   @id @default(uuid())
   tenantId    String
+  workspaceId String?
   documentId  String
   filename    String
   contentType String
@@ -36,14 +87,17 @@ model IngestionJob {
   completedAt DateTime?
 
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([workspaceId, status, createdAt(sort: Desc)])
   @@index([tenantId, documentId, createdAt(sort: Desc)])
 }
 
 model Chunk {
   id               String   @id @default(uuid())
   tenantId         String
+  workspaceId      String?
   documentId       String
   chunkIndex       Int
   text             String
@@ -51,39 +105,48 @@ model Chunk {
   createdAt        DateTime @default(now())
 
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, documentId, chunkIndex])
   @@index([tenantId, documentId])
+  @@index([workspaceId, documentId])
 }
 
 model ChatSession {
   id        String   @id @default(uuid())
   tenantId  String
+  workspaceId String?
   userId    String
   createdAt DateTime @default(now())
 
   user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   messages ChatMessage[]
 
   @@index([tenantId, userId, createdAt(sort: Desc)])
+  @@index([workspaceId, userId, createdAt(sort: Desc)])
 }
 
 model ChatMessage {
   id        String   @id @default(uuid())
   tenantId  String
+  workspaceId String?
   sessionId String
   role      String
   content   String
   createdAt DateTime @default(now())
 
   session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, sessionId, createdAt(sort: Desc)])
+  @@index([workspaceId, sessionId, createdAt(sort: Desc)])
 }
 
 model User {
   id           String   @id @default(uuid())
   tenantId     String
+  workspaceId  String?
   email        String
   displayName  String?
   passwordHash String?
@@ -92,10 +155,13 @@ model User {
   status       String   @default("pending")
   createdAt    DateTime @default(now())
 
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  memberships WorkspaceMember[]
   sessions ChatSession[]
 
   @@unique([tenantId, email])
   @@unique([tenantId, googleSub])
   @@index([tenantId, createdAt(sort: Desc)])
+  @@index([workspaceId, createdAt(sort: Desc)])
 }
 

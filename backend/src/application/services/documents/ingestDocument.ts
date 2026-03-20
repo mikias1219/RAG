@@ -27,6 +27,7 @@ export class IngestDocumentService {
 
   async enqueue(input: {
     tenantId: string;
+    workspaceId?: string | null;
     documentId: string;
     jobId: string;
     filename: string;
@@ -45,6 +46,7 @@ export class IngestDocumentService {
     await this.deps.documentsRepo.createDocument({
       id: documentId,
       tenantId,
+      workspaceId: input.workspaceId ?? null,
       filename: input.filename,
       contentType: input.contentType,
       blobUrl: uploaded.url,
@@ -54,6 +56,7 @@ export class IngestDocumentService {
     await this.deps.jobsRepo.create({
       id: jobId,
       tenantId,
+      workspaceId: input.workspaceId ?? null,
       documentId,
       filename: input.filename,
       contentType: input.contentType,
@@ -62,7 +65,7 @@ export class IngestDocumentService {
     this.bufferedBytes.set(jobId, input.bytes);
     // Fire-and-forget processing to decouple upload request latency from indexing.
     setTimeout(() => {
-      void this.processJob({ tenantId, jobId });
+      void this.processJob({ tenantId, workspaceId: input.workspaceId ?? null, jobId });
     }, 0);
 
     return {
@@ -73,15 +76,15 @@ export class IngestDocumentService {
     };
   }
 
-  async getJob(input: { tenantId: string; jobId: string }) {
+  async getJob(input: { tenantId: string; workspaceId?: string | null; jobId: string }) {
     return this.deps.jobsRepo.getById(input);
   }
 
-  async listJobs(input: { tenantId: string; limit: number }) {
+  async listJobs(input: { tenantId: string; workspaceId?: string | null; limit: number }) {
     return this.deps.jobsRepo.listByTenant(input);
   }
 
-  async retryJob(input: { tenantId: string; jobId: string }) {
+  async retryJob(input: { tenantId: string; workspaceId?: string | null; jobId: string }) {
     const job = await this.deps.jobsRepo.getById(input);
     if (!job) throw badRequest("Job not found");
     if (job.status !== "failed") throw badRequest("Only failed jobs can be retried");
@@ -89,24 +92,31 @@ export class IngestDocumentService {
     if (!bytes) throw badRequest("Retry window expired. Re-upload the file to retry.");
     await this.deps.jobsRepo.setStatus({
       tenantId: input.tenantId,
+      workspaceId: input.workspaceId ?? null,
       jobId: input.jobId,
       status: "queued",
       errorMessage: null
     });
     setTimeout(() => {
-      void this.processJob({ tenantId: input.tenantId, jobId: input.jobId });
+      void this.processJob({
+        tenantId: input.tenantId,
+        workspaceId: input.workspaceId ?? null,
+        jobId: input.jobId
+      });
     }, 0);
     return { jobId: input.jobId, status: "queued" };
   }
 
-  private async processJob(input: { tenantId: string; jobId: string }) {
+  private async processJob(input: { tenantId: string; workspaceId?: string | null; jobId: string }) {
     const { tenantId, jobId } = input;
-    const job = await this.deps.jobsRepo.getById({ tenantId, jobId });
+    const workspaceId = input.workspaceId ?? null;
+    const job = await this.deps.jobsRepo.getById({ tenantId, workspaceId, jobId });
     if (!job) return;
     const bytes = this.bufferedBytes.get(jobId);
     if (!bytes) {
       await this.deps.jobsRepo.setStatus({
         tenantId,
+        workspaceId,
         jobId,
         status: "failed",
         errorMessage: "Upload payload no longer available for processing",
@@ -116,6 +126,7 @@ export class IngestDocumentService {
     }
     await this.deps.jobsRepo.setStatus({
       tenantId,
+      workspaceId,
       jobId,
       status: "processing",
       setStartedAt: true
@@ -128,14 +139,16 @@ export class IngestDocumentService {
       });
       const result = await this.indexExtracted({
         tenantId,
+        workspaceId,
         documentId: job.documentId,
         filename: job.filename,
         contentType: job.contentType,
-        blobUrl: await this.getBlobUrl({ tenantId, documentId: job.documentId }),
+        blobUrl: await this.getBlobUrl({ tenantId, workspaceId, documentId: job.documentId }),
         extractedText
       });
       await this.deps.jobsRepo.setStatus({
         tenantId,
+        workspaceId,
         jobId,
         status: "indexed",
         setCompletedAt: true,
@@ -145,6 +158,7 @@ export class IngestDocumentService {
     } catch (error: any) {
       await this.deps.jobsRepo.setStatus({
         tenantId,
+        workspaceId,
         jobId,
         status: "failed",
         errorMessage: error?.message ?? "Unknown ingestion error",
@@ -156,6 +170,7 @@ export class IngestDocumentService {
 
   private async indexExtracted(input: {
     tenantId: string;
+    workspaceId?: string | null;
     documentId: string;
     filename: string;
     contentType: string;
@@ -183,6 +198,7 @@ export class IngestDocumentService {
 
     await this.deps.documentsRepo.createChunks({
       tenantId,
+      workspaceId: input.workspaceId ?? null,
       documentId,
       chunks: chunkRows
     });
@@ -230,9 +246,10 @@ export class IngestDocumentService {
     );
   }
 
-  private async getBlobUrl(input: { tenantId: string; documentId: string }) {
+  private async getBlobUrl(input: { tenantId: string; workspaceId?: string | null; documentId: string }) {
     const doc = await this.deps.documentsRepo.getDocument({
       tenantId: input.tenantId,
+      workspaceId: input.workspaceId ?? null,
       documentId: input.documentId
     });
     if (!doc) throw badRequest("Document metadata was not found");

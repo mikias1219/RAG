@@ -9,6 +9,7 @@ export class InMemoryIngestionJobRepository implements IngestionJobRepository {
   async create(input: {
     id: string;
     tenantId: string;
+    workspaceId?: string | null;
     documentId: string;
     filename: string;
     contentType: string;
@@ -22,31 +23,39 @@ export class InMemoryIngestionJobRepository implements IngestionJobRepository {
       startedAt: null,
       completedAt: null
     };
-    this.store.set(this.key(input.tenantId, input.id), row);
+    this.store.set(this.key(input.tenantId, input.workspaceId ?? null, input.id), row);
     return row;
   }
 
-  async getById(input: { tenantId: string; jobId: string }) {
-    return this.store.get(this.key(input.tenantId, input.jobId)) ?? null;
+  async getById(input: { tenantId: string; workspaceId?: string | null; jobId: string }) {
+    return (
+      this.store.get(this.key(input.tenantId, input.workspaceId ?? null, input.jobId)) ??
+      this.store.get(this.key(input.tenantId, null, input.jobId)) ??
+      null
+    );
   }
 
-  async listByTenant(input: { tenantId: string; limit: number }) {
+  async listByTenant(input: { tenantId: string; workspaceId?: string | null; limit: number }) {
     return Array.from(this.store.values())
-      .filter((j) => j.tenantId === input.tenantId)
+      .filter((j) =>
+        j.tenantId === input.tenantId &&
+        (!input.workspaceId || j.workspaceId === input.workspaceId || !j.workspaceId)
+      )
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, input.limit);
   }
 
   async setStatus(input: {
     tenantId: string;
+    workspaceId?: string | null;
     jobId: string;
     status: "queued" | "processing" | "indexed" | "failed";
     errorMessage?: string | null;
     setStartedAt?: boolean;
     setCompletedAt?: boolean;
   }) {
-    const key = this.key(input.tenantId, input.jobId);
-    const current = this.store.get(key);
+    const key = this.key(input.tenantId, input.workspaceId ?? null, input.jobId);
+    const current = this.store.get(key) ?? this.store.get(this.key(input.tenantId, null, input.jobId));
     if (!current) return;
     current.status = input.status;
     current.errorMessage = input.errorMessage ?? null;
@@ -55,8 +64,8 @@ export class InMemoryIngestionJobRepository implements IngestionJobRepository {
     this.store.set(key, current);
   }
 
-  private key(tenantId: string, jobId: string) {
-    return `${tenantId}:${jobId}`;
+  private key(tenantId: string, workspaceId: string | null, jobId: string) {
+    return `${tenantId}:${workspaceId ?? "none"}:${jobId}`;
   }
 }
 
