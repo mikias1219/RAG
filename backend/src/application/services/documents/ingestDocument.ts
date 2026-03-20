@@ -5,10 +5,19 @@ import type { AiService } from "@/domain/ports/aiService";
 import type { SearchService, SearchChunkDoc } from "@/domain/ports/searchService";
 import type { StorageService } from "@/domain/ports/storageService";
 import type { DocumentRepository } from "@/domain/ports/documentRepository";
-import type { IngestionJobRepository } from "@/domain/ports/ingestionJobRepository";
+import type { IngestionJobRecord, IngestionJobRepository } from "@/domain/ports/ingestionJobRepository";
 import type { DocumentIntelligenceService } from "@/domain/ports/documentIntelligenceService";
 import { chunkText } from "@/application/services/rag/chunkingService";
 import { badRequest } from "@/domain/errors/AppError";
+
+/** Must match AzureBlobStorageService blob path: `sanitize(tenantId)/documentId/safeFilename` */
+function tenantSegmentSanitize(s: string) {
+  return s.replace(/[^a-zA-Z0-9-_]/g, "_");
+}
+
+function inferredStorageBlobKey(job: Pick<IngestionJobRecord, "tenantId" | "documentId" | "filename">) {
+  return `${tenantSegmentSanitize(job.tenantId)}/${job.documentId}/${safeFilename(job.filename)}`;
+}
 
 export class IngestDocumentService {
   constructor(
@@ -121,8 +130,13 @@ export class IngestDocumentService {
     const job = await this.deps.jobsRepo.getById(input);
     if (!job) throw badRequest("Job not found");
     if (job.status !== "failed") throw badRequest("Only failed jobs can be retried");
-    const hasBytes = this.bufferedBytes.has(job.id) || Boolean(job.storageObjectKey);
-    if (!hasBytes) throw badRequest("Retry not possible: upload buffer expired and no storage key.");
+    const inMemory = this.bufferedBytes.has(job.id);
+    const inStorage = inMemory ? true : (await this.tryLoadBytesFromStorage(job)) !== null;
+    if (!inStorage) {
+      throw badRequest(
+        "Retry not possible: the file is no longer in blob storage. Re-upload the document."
+      );
+    }
     await this.deps.jobsRepo.setStatus({
       tenantId: input.tenantId,
       workspaceId: input.workspaceId ?? null,
@@ -219,14 +233,35 @@ export class IngestDocumentService {
     }
   }
 
-  private async resolveJobBytes(job: {
-    id: string;
-    storageObjectKey: string | null;
-  }): Promise<Buffer | null> {
+  private async resolveJobBytes(job: IngestionJobRecord): Promise<Buffer | null> {
     const fromBuffer = this.bufferedBytes.get(job.id);
     if (fromBuffer) return fromBuffer;
-    if (job.storageObjectKey) {
-      return this.deps.storage.getObject({ blobKey: job.storageObjectKey });
+    return this.tryLoadBytesFromStorage(job);
+  }
+
+  /**
+   * Load bytes from blob storage using persisted key or the same path convention as upload
+   * (fixes legacy rows with null storageObjectKey after migrations / multi-instance APIs).
+   */
+  private async tryLoadBytesFromStorage(job: IngestionJobRecord): Promise<Buffer | null> {
+    const keys = [...new Set([job.storageObjectKey, inferredStorageBlobKey(job)].filter(Boolean) as string[])];
+    for (const blobKey of keys) {
+      try {
+        const buf = await this.deps.storage.getObject({ blobKey });
+        if (buf?.length) {
+          if (!job.storageObjectKey || job.storageObjectKey !== blobKey) {
+            await this.deps.jobsRepo.setStorageObjectKey({
+              tenantId: job.tenantId,
+              workspaceId: job.workspaceId ?? null,
+              jobId: job.id,
+              storageObjectKey: blobKey
+            });
+          }
+          return buf;
+        }
+      } catch {
+        /* try next candidate key */
+      }
     }
     return null;
   }

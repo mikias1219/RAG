@@ -83,5 +83,22 @@ export class PrismaIngestionJobRepository implements IngestionJobRepository {
       }
     });
   }
+
+  async setStorageObjectKey(input: {
+    tenantId: string;
+    workspaceId?: string | null;
+    jobId: string;
+    storageObjectKey: string;
+  }) {
+    await this.prisma.ingestionJob.updateMany({
+      where: input.workspaceId
+        ? {
+            id: input.jobId,
+            OR: [{ workspaceId: input.workspaceId }, { tenantId: input.tenantId, workspaceId: null }]
+          }
+        : { id: input.jobId, tenantId: input.tenantId },
+      data: { storageObjectKey: input.storageObjectKey }
+    });
+  }
 }
 

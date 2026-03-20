@@ -37,5 +37,13 @@ export interface IngestionJobRepository {
     setCompletedAt?: boolean;
     incrementAttempt?: boolean;
   }): Promise<void>;
+
+  /** Backfill blob key for jobs created before storageObjectKey was persisted (or legacy rows). */
+  setStorageObjectKey(input: {
+    tenantId: string;
+    workspaceId?: string | null;
+    jobId: string;
+    storageObjectKey: string;
+  }): Promise<void>;
 }
 

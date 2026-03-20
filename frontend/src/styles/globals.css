@@ -47,11 +47,27 @@ a {
 
 .app-shell:has(.dash-root) {
   height: 100vh;
+  max-height: 100dvh;
   overflow: hidden;
 }
 
 .app-shell:has(.dash-root) .footer-minimal {
   display: none;
+}
+
+/* Flex chain so .dash-scroll and panel innards get a bounded height and can scroll */
+.app-shell:has(.dash-root) .content-fullbleed {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-shell:has(.dash-root) .content-container-full {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .container {
@@ -421,6 +437,56 @@ a {
   gap: 6px;
 }
 
+.doc-jobs-scroll {
+  max-height: min(280px, 40vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  margin-top: 8px;
+  scrollbar-gutter: stable;
+}
+
+.doc-job-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.doc-job-row:last-child {
+  border-bottom: none;
+}
+
+.doc-job-meta {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+}
+
+.doc-job-status {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.doc-job-status.is-failed {
+  border-color: rgba(255, 103, 103, 0.45);
+  color: #ffb4b4;
+}
+
+.doc-job-status.is-ok {
+  border-color: rgba(19, 194, 154, 0.45);
+  color: var(--accent);
+}
+
 .collection-item {
   display: flex;
   justify-content: space-between;
@@ -622,8 +688,10 @@ a {
 /* —— Dashboard (sidebar layout) —— */
 .dash-root {
   display: flex;
-  min-height: 100%;
+  flex: 1;
+  min-height: 0;
   width: 100%;
+  align-self: stretch;
   background: var(--bg);
 }
 
@@ -1092,12 +1160,15 @@ html:has(.login-shell) body {
   gap: 20px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;
-  min-height: min(72vh, 760px);
+  min-height: 0;
 }
 
 .dash-panel-tall {
-  min-height: 520px;
-  height: 100%;
+  min-height: min(420px, 55vh);
+  max-height: calc(100vh - 140px);
+  height: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .dash-side-card {

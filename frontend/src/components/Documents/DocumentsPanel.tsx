@@ -20,6 +20,7 @@ export function DocumentsPanel({
   const [jobs, setJobs] = useState<IngestionJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -84,27 +85,53 @@ export function DocumentsPanel({
 
         <div className="documents-list">
           <div className="collection-box">
-            <h3 className="collection-title">Ingestion Jobs</h3>
-            <div className="collection-list">
-              {jobs.slice(0, 10).map((job) => (
-                <div key={job.id} className="collection-item">
-                  <span>
-                    {job.filename} - {job.status}
-                    {job.errorMessage ? ` (${job.errorMessage})` : ""}
-                  </span>
+            <h3 className="collection-title">Ingestion jobs</h3>
+            <p className="muted-text" style={{ marginTop: 4, marginBottom: 0 }}>
+              Failed jobs can be retried if the file still exists in blob storage (including legacy jobs without a
+              stored key).
+            </p>
+            <div className="doc-jobs-scroll">
+              {jobs.map((job) => (
+                <div key={job.id} className="doc-job-row">
+                  <div className="doc-job-meta">
+                    <strong style={{ color: "var(--text)" }}>{job.filename}</strong>
+                    <div>
+                      <span
+                        className={`doc-job-status ${job.status === "failed" ? "is-failed" : job.status === "indexed" ? "is-ok" : ""}`}
+                      >
+                        {job.status}
+                      </span>
+                      <span className="muted-text" style={{ marginLeft: 8 }}>
+                        {new Date(job.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    {job.errorMessage ? (
+                      <div className="error-text" style={{ marginTop: 6 }}>
+                        {job.errorMessage}
+                      </div>
+                    ) : null}
+                  </div>
                   {job.status === "failed" ? (
                     <button
-                      className="document-link"
+                      type="button"
+                      className="dash-btn-sm"
+                      disabled={retryingId === job.id}
                       onClick={async () => {
-                        await retryIngestionJob(job.id);
-                        await refresh();
+                        setRetryingId(job.id);
+                        setError(null);
+                        try {
+                          await retryIngestionJob(job.id);
+                          await refresh();
+                        } catch (e: unknown) {
+                          setError(e instanceof Error ? e.message : "Retry failed");
+                        } finally {
+                          setRetryingId(null);
+                        }
                       }}
                     >
-                      Retry
+                      {retryingId === job.id ? "Retrying…" : "Retry"}
                     </button>
-                  ) : (
-                    <span>{new Date(job.createdAt).toLocaleTimeString()}</span>
-                  )}
+                  ) : null}
                 </div>
               ))}
               {jobs.length === 0 && <p className="muted-text">No ingestion jobs yet.</p>}

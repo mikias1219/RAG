@@ -69,6 +69,19 @@ export class InMemoryIngestionJobRepository implements IngestionJobRepository {
     this.store.set(key, current);
   }
 
+  async setStorageObjectKey(input: {
+    tenantId: string;
+    workspaceId?: string | null;
+    jobId: string;
+    storageObjectKey: string;
+  }) {
+    const key = this.key(input.tenantId, input.workspaceId ?? null, input.jobId);
+    const current = this.store.get(key) ?? this.store.get(this.key(input.tenantId, null, input.jobId));
+    if (!current) return;
+    current.storageObjectKey = input.storageObjectKey;
+    this.store.set(key, current);
+  }
+
   private key(tenantId: string, workspaceId: string | null, jobId: string) {
     return `${tenantId}:${workspaceId ?? "none"}:${jobId}`;
   }

@@ -229,6 +229,24 @@ Fixed in the API client: PATCH user status/role returns **204 No Content** (empt
 - **Application Insights**: Optional — add the Node SDK to the backend and `NEXT_PUBLIC_*` for the frontend.
 - Tail errors: `docker compose logs -f backend` and check the `err` / `requestId` fields from `pino`.
 
+### Checking Azure from your machine (CLI)
+
+Signing in must be done **on your computer** (browser/device code flow, often MFA). From the project directory:
+
+```bash
+az login
+az account show
+# Replace with your resource group and Container App names:
+az containerapp logs show -g <resource-group> -n ai102-backend --follow
+az containerapp logs show -g <resource-group> -n ai102-frontend --follow
+```
+
+Confirm **frontend** app settings include **`BACKEND_INTERNAL_API_URL`** pointing at the **internal** backend URL (see `.env.example`). A **404** on `/favicon.ico` or missing static assets is harmless; a 404 on `/backend-api/...` usually means the Next rewrite/proxy is not deployed or env is wrong.
+
+### Ingestion job retry (400 “no storage key”)
+
+Older jobs could have `storageObjectKey` null in Postgres while the blob still exists. The backend now **infers** the blob path using the same rule as upload (`tenantSegment/documentId/safeFilename`) and **backfills** the column after a successful read. Redeploy the **backend** (and run migrations) after pulling this change.
+
 ### AI services (RAG / ingestion)
 
 - **Chat + embeddings** use **Azure OpenAI** from the Node backend (`AZURE_OPENAI_*` env vars) when configured.
