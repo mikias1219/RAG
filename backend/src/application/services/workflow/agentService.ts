@@ -74,10 +74,16 @@ export class AgentService {
   async executeAgent(
     agent: Agent,
     context: Record<string, unknown>
-  ): Promise<{ response: string; toolCalls: Array<{ tool: string; args: Record<string, unknown> }> }> {
-    const toolCalls: Array<{ tool: string; args: Record<string, unknown> }> = [];
-    const response = `Agent ${agent.name} processed context and identified ${agent.tools.length} relevant tools.`;
+  ): Promise<{ response: string; toolCalls: Array<{ tool: string; args: Record<string, unknown> }>; status: "completed" }> {
+    const toolCalls = agent.tools.slice(0, 2).map((tool) => ({
+      tool: tool.name,
+      args: { contextKeys: Object.keys(context).slice(0, 5) }
+    }));
+    const response =
+      toolCalls.length > 0
+        ? `Agent ${agent.name} prepared ${toolCalls.length} tool call(s).`
+        : `Agent ${agent.name} found no actionable tools for this context.`;
 
-    return { response, toolCalls };
+    return { response, toolCalls, status: "completed" };
   }
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   createWorkflow,
-  evaluateWorkflow,
+  executeWorkflow,
   listWorkflows,
   type WorkflowDto
 } from "@/lib/apiClient";
@@ -16,7 +16,9 @@ export default function WorkflowsPage() {
   const [name, setName] = useState("Compliance notify");
   const [busy, setBusy] = useState(false);
   const [evalBusy, setEvalBusy] = useState<string | null>(null);
-  const [evalResults, setEvalResults] = useState<Record<string, { matched: boolean }>>({});
+  const [evalResults, setEvalResults] = useState<
+    Record<string, { matched: boolean; runId: string; status: "completed" | "failed" }>
+  >({});
 
   const canEdit = ["admin", "manager", "superadmin"].includes(user.role);
 
@@ -44,7 +46,7 @@ export default function WorkflowsPage() {
         rules: [
           {
             condition: { event: "document.indexed" },
-            action: { type: "notify", channel: "audit", message: "Document ready for review" }
+            action: { type: "run_agent", agentId: "operations" }
           }
         ]
       });
@@ -57,13 +59,17 @@ export default function WorkflowsPage() {
     }
   }
 
-  async function onEvaluate(id: string) {
+  async function onExecute(id: string) {
     setEvalBusy(id);
     try {
-      await evaluateWorkflow(id, { event: "document.indexed" });
+      const result = await executeWorkflow(id, { event: "document.indexed" });
+      setEvalResults((prev) => ({
+        ...prev,
+        [id]: { matched: result.matched, runId: result.runId, status: result.status }
+      }));
       setError(null);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Evaluate failed");
+      setError(e instanceof Error ? e.message : "Execute failed");
     } finally {
       setEvalBusy(null);
     }
@@ -125,7 +131,7 @@ export default function WorkflowsPage() {
                   <th>Status</th>
                   <th>Updated</th>
                   <th>Rules</th>
-                  <th>Test</th>
+                  <th>Last run</th>
                   <th />
                 </tr>
               </thead>
@@ -149,7 +155,7 @@ export default function WorkflowsPage() {
                           className={`dash-badge ${evalResults[w.id].matched ? "dash-badge-ok" : ""}`}
                           title='Last run with event "document.indexed"'
                         >
-                          {evalResults[w.id].matched ? "Matched" : "No match"}
+                          {evalResults[w.id].matched ? "Matched" : "No match"} ({evalResults[w.id].status})
                         </span>
                       ) : (
                         <span className="muted-text">—</span>
@@ -160,9 +166,9 @@ export default function WorkflowsPage() {
                         type="button"
                         className="dash-btn-sm"
                         disabled={evalBusy === w.id}
-                        onClick={() => void onEvaluate(w.id)}
+                        onClick={() => void onExecute(w.id)}
                       >
-                        {evalBusy === w.id ? "…" : "Test match"}
+                        {evalBusy === w.id ? "…" : "Execute"}
                       </button>
                     </td>
                   </tr>

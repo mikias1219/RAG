@@ -3,6 +3,11 @@ export interface WorkflowRule {
   action: Record<string, unknown>;
 }
 
+export interface MatchedWorkflowRule {
+  index: number;
+  rule: WorkflowRule;
+}
+
 export interface Workflow {
   id: string;
   tenantId: string;
@@ -35,14 +40,19 @@ export class WorkflowService {
   }
 
   async evaluateWorkflow(workflow: Workflow, context: Record<string, unknown>): Promise<boolean> {
-    if (!workflow.enabled) return false;
+    return this.findMatchedRules(workflow, context).length > 0;
+  }
 
-    for (const rule of workflow.rules) {
+  findMatchedRules(workflow: Workflow, context: Record<string, unknown>): MatchedWorkflowRule[] {
+    if (!workflow.enabled) return [];
+
+    const matched: MatchedWorkflowRule[] = [];
+    for (const [index, rule] of workflow.rules.entries()) {
       if (this.evaluateCondition(rule.condition, context)) {
-        return true;
+        matched.push({ index, rule });
       }
     }
-    return false;
+    return matched;
   }
 
   private evaluateCondition(condition: Record<string, unknown>, context: Record<string, unknown>): boolean {

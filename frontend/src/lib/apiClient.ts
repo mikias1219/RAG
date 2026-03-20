@@ -278,15 +278,24 @@ export async function listAuditLogs(limit = 100): Promise<{ items: AuditLogRow[]
 
 export type WorkflowEvaluateResult = { matched: boolean; workflowId: string };
 
-export async function evaluateWorkflow(
+export type WorkflowExecuteResult = {
+  workflowId: string;
+  runId: string;
+  matched: boolean;
+  matchedRuleIndexes: number[];
+  status: "completed" | "failed";
+  steps: Array<{ type: string; status: "completed" | "failed" }>;
+};
+
+export async function executeWorkflow(
   workflowId: string,
   context: Record<string, unknown>
-): Promise<WorkflowEvaluateResult> {
-  const res = await fetch(`${baseUrl}/workflows/${workflowId}/evaluate`, {
+): Promise<WorkflowExecuteResult> {
+  const res = await fetch(`${baseUrl}/workflows/${workflowId}/execute`, {
     method: "POST",
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ context })
   });
-  return handle<WorkflowEvaluateResult>(res);
+  return handle<WorkflowExecuteResult>(res);
 }
 

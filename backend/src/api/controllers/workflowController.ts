@@ -18,6 +18,10 @@ const createBody = z.object({
     .min(1)
 });
 
+const executeBody = z.object({
+  context: z.record(z.string(), z.unknown()).default({})
+});
+
 export function workflowController(container: Container) {
   const router = Router();
   const prisma = getPrisma();
@@ -91,30 +95,36 @@ export function workflowController(container: Container) {
   );
 
   router.post(
+    "/:id/execute",
+    asyncHandler(async (req, res) => {
+      const auth = (req as any).auth;
+      const body = executeBody.safeParse(req.body ?? {});
+      if (!body.success) throw badRequest("Invalid execute body", body.error.flatten());
+      const result = await container.workflowExecutionService.execute({
+        workflowId: req.params.id,
+        tenantId: auth.tenantId,
+        workspaceId: auth.workspaceId ?? null,
+        context: body.data.context,
+        triggeredBy: "api.execute"
+      });
+      res.json(result);
+    })
+  );
+
+  router.post(
     "/:id/evaluate",
     asyncHandler(async (req, res) => {
       const auth = (req as any).auth;
-      const row = await prisma.workflow.findFirst({
-        where: { id: req.params.id, tenantId: auth.tenantId }
+      const body = executeBody.safeParse(req.body ?? {});
+      if (!body.success) throw badRequest("Invalid evaluate body", body.error.flatten());
+      const result = await container.workflowExecutionService.execute({
+        workflowId: req.params.id,
+        tenantId: auth.tenantId,
+        workspaceId: auth.workspaceId ?? null,
+        context: body.data.context,
+        triggeredBy: "api.evaluate"
       });
-      if (!row) throw badRequest("Workflow not found");
-      const rules = JSON.parse(row.rulesJson) as Array<{ condition: Record<string, unknown>; action: Record<string, unknown> }>;
-      const ctx = (req.body?.context ?? {}) as Record<string, unknown>;
-      const matched = await container.workflowService.evaluateWorkflow(
-        {
-          id: row.id,
-          tenantId: row.tenantId,
-          workspaceId: row.workspaceId ?? undefined,
-          name: row.name,
-          description: row.description ?? undefined,
-          rules,
-          enabled: row.enabled,
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt
-        },
-        ctx
-      );
-      res.json({ matched, workflowId: row.id });
+      res.json({ matched: result.matched, workflowId: result.workflowId, runId: result.runId });
     })
   );
 

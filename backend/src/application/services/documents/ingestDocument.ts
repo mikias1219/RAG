@@ -31,6 +31,12 @@ export class IngestDocumentService {
       jobsRepo: IngestionJobRepository;
       documentIntelligence: DocumentIntelligenceService;
       ingestionQueue?: Queue | null;
+      onDocumentIndexed?: (input: {
+        tenantId: string;
+        workspaceId?: string | null;
+        documentId: string;
+        jobId: string;
+      }) => Promise<void>;
     }
   ) {}
 
@@ -219,6 +225,9 @@ export class IngestDocumentService {
         setCompletedAt: true,
         errorMessage: null
       });
+      if (this.deps.onDocumentIndexed) {
+        await this.deps.onDocumentIndexed({ tenantId, workspaceId, documentId: job.documentId, jobId });
+      }
       this.deps.logger.info({ tenantId, jobId, ...result }, "ingestion job indexed");
     } catch (error: any) {
       await this.deps.jobsRepo.setStatus({

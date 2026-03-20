@@ -23,8 +23,10 @@ import { ChatService } from "@/application/services/chat/chatService";
 import { AuthService } from "@/application/services/auth/authService";
 import { WorkflowService } from "@/application/services/workflow/workflowService";
 import { AgentService } from "@/application/services/workflow/agentService";
+import { WorkflowExecutionService } from "@/application/services/workflow/workflowExecutionService";
 import { createIngestionQueue } from "@/infrastructure/queue/ingestionQueue";
 import type { Queue } from "bullmq";
+import { getPrisma } from "@/infrastructure/db/prismaClient";
 
 export type Container = {
   logger: Logger;
@@ -42,6 +44,7 @@ export type Container = {
   chatService: ChatService;
   authService: AuthService;
   workflowService: WorkflowService;
+  workflowExecutionService: WorkflowExecutionService;
   agentService: AgentService;
   ingestionQueue: Queue | null;
 };
@@ -110,6 +113,10 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
     env.INGESTION_QUEUE_ENABLED && env.REDIS_URL ? createIngestionQueue(env.REDIS_URL) : null;
   const workflowService = new WorkflowService();
   const agentService = new AgentService();
+  const workflowExecutionService = new WorkflowExecutionService({
+    workflowService,
+    agentService
+  });
   const ingestDocumentService = new IngestDocumentService({
     env,
     logger,
@@ -119,7 +126,26 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
     documentsRepo,
     jobsRepo,
     documentIntelligence,
-    ingestionQueue
+    ingestionQueue,
+    onDocumentIndexed: async ({ tenantId, workspaceId, documentId, jobId }) => {
+      const prisma = getPrisma();
+      const rows = await prisma.workflow.findMany({
+        where: {
+          tenantId,
+          enabled: true,
+          ...(workspaceId ? { OR: [{ workspaceId }, { workspaceId: null }] } : {})
+        }
+      });
+      for (const row of rows) {
+        await workflowExecutionService.execute({
+          workflowId: row.id,
+          tenantId,
+          workspaceId,
+          triggeredBy: "document.indexed",
+          context: { event: "document.indexed", documentId, jobId }
+        });
+      }
+    }
   });
   const chatService = new ChatService({ chatRepo, ragService });
   const authService = new AuthService({
@@ -144,6 +170,7 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
     chatService,
     authService,
     workflowService,
+    workflowExecutionService,
     agentService,
     ingestionQueue
   };
