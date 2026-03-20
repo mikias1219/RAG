@@ -133,15 +133,36 @@ export class RagService {
       );
     });
 
+    const verifiedAnswer = await withRetry(
+      () =>
+        this.deps.ai.chatComplete({
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a strict grounding verifier. Rewrite the draft answer using ONLY provided context. " +
+                "If any claim is not grounded in context, remove it. If insufficient evidence remains, reply exactly: " +
+                "\"I cannot answer your question from the selected documents.\""
+            },
+            { role: "system", content: `Question:\n${question}` },
+            { role: "system", content: `Context:\n${context}` },
+            { role: "system", content: `Draft answer:\n${completion.text}` }
+          ]
+        }),
+      { maxAttempts: 2, delayMs: 600 }
+    ).catch(() => completion);
+
     return {
-      answer: completion.text,
-      sources: effectiveChunks.map((c) => ({
+      answer: verifiedAnswer.text,
+      sources: dedupeSources(
+        effectiveChunks.map((c) => ({
         documentId: c.documentId,
         chunkId: c.chunkId,
         score: c.score,
         filename: c.source.filename,
         url: c.source.blobUrl
       }))
+      )
     };
   }
 
@@ -199,6 +220,20 @@ export class RagService {
       source: { filename: r.document.filename, blobUrl: r.document.blobUrl }
     }));
   }
+}
+
+function dedupeSources(
+  sources: Array<{ documentId: string; chunkId: string; score: number; filename: string; url: string }>
+) {
+  const byChunk = new Map<string, (typeof sources)[number]>();
+  for (const s of sources) {
+    if (!byChunk.has(s.chunkId) || byChunk.get(s.chunkId)!.score < s.score) {
+      byChunk.set(s.chunkId, s);
+    }
+  }
+  return Array.from(byChunk.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
 }
 
 function hashShort(s: string) {

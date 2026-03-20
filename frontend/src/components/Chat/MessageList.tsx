@@ -29,12 +29,15 @@ export function MessageList({ messages }: Props) {
               <div className="message-sources">
                 <div className="message-sources-title">Sources</div>
                 <ul>
-                  {m.sources.map((s, i) => (
+                  {groupSources(m.sources).map((s, i) => (
                     <li key={`${s.chunkId}-${i}`}>
                       <a href={s.url} target="_blank" rel="noreferrer">
                         {s.filename}
                       </a>
-                      <span className="message-source-meta">relevance {formatRelevance(s.score)}</span>
+                      <span className="message-source-meta">
+                        relevance {formatRelevance(s.score)}
+                        {s.repeatCount > 1 ? ` • ${s.repeatCount} excerpts` : ""}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -45,6 +48,26 @@ export function MessageList({ messages }: Props) {
       ))}
     </div>
   );
+}
+
+function groupSources(sources: ChatMessage["sources"]) {
+  const rows = sources ?? [];
+  const map = new Map<string, (typeof rows)[number] & { repeatCount: number }>();
+  for (const s of rows) {
+    const key = `${s.documentId}::${s.filename}`;
+    const prev = map.get(key);
+    if (!prev) {
+      map.set(key, { ...s, repeatCount: 1 });
+      continue;
+    }
+    if (s.score > prev.score) {
+      map.set(key, { ...s, repeatCount: prev.repeatCount + 1 });
+    } else {
+      prev.repeatCount += 1;
+      map.set(key, prev);
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.score - a.score).slice(0, 5);
 }
 
 function FormattedMessage({ text }: { text: string }) {
