@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 const allowedMethods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]);
 
+/**
+ * Server-side proxy only. In Docker, localhost would hit the frontend container — use the backend service URL.
+ * Browser calls stay same-origin `/backend-api/*`; this env is not exposed to the client.
+ */
 function getBackendBaseUrl(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (fromEnv && fromEnv.trim().length > 0) return fromEnv.replace(/\/+$/, "");
+  const internal = process.env.BACKEND_INTERNAL_API_URL?.trim();
+  if (internal) return internal.replace(/\/+$/, "");
+  const fromEnv = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/+$/, "");
   return "http://localhost:8080/api";
 }
 

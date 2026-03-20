@@ -199,6 +199,41 @@ All models include `tenantId` for multi-tenant isolation.
 
 ## Troubleshooting
 
+### API returns 500 on `/workflows`, `/audit`, `/documents/jobs`
+
+The database schema must include `Workflow`, `AuditLog`, and extra `IngestionJob` / `Chunk` columns. **Run migrations** before using the app:
+
+```bash
+cd backend && npx prisma migrate deploy
+# or during local dev:
+npm run prisma:migrate
+```
+
+Docker images run `prisma migrate deploy` automatically via `backend/docker-entrypoint.sh` when the container starts.
+
+### Frontend “Internal server error” or proxy failures in Docker
+
+Next.js calls the API from the **server** route `src/app/backend-api/[...path]/route.ts`. Inside a container, `localhost:8080` is wrong. Set:
+
+- **`BACKEND_INTERNAL_API_URL`** = internal URL (e.g. `http://backend:8080/api` in Compose, or your Azure Container App **internal** ingress URL).
+
+See `.env.example`. Browser traffic still uses same-origin `/backend-api/...`.
+
+### Admin page: `Unexpected end of JSON input`
+
+Fixed in the API client: PATCH user status/role returns **204 No Content** (empty body). Older clients called `response.json()` on empty bodies and threw. Ensure the latest `frontend/src/lib/apiClient.ts` is deployed.
+
+### Azure / production logging
+
+- **Container Apps**: Log stream + Log Analytics workspace (see Azure Portal → your app → **Log stream** / **Logs**).
+- **Application Insights**: Optional — add the Node SDK to the backend and `NEXT_PUBLIC_*` for the frontend.
+- Tail errors: `docker compose logs -f backend` and check the `err` / `requestId` fields from `pino`.
+
+### AI services (RAG / ingestion)
+
+- **Chat + embeddings** use **Azure OpenAI** from the Node backend (`AZURE_OPENAI_*` env vars) when configured.
+- **Optional** `services/ai-python` (Compose profile `full`) exposes a separate embedding HTTP API; wiring it into RAG is optional (`PYTHON_AI_BASE_URL` is reserved for future use).
+
 ```bash
 # Reset database
 npm run prisma:migrate reset

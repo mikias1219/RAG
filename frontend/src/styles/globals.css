@@ -1086,7 +1086,67 @@ html:has(.login-shell) body {
   font-size: 11px;
 }
 
+/* Chat / documents two-column layout inside dashboard */
+.dash-page-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  min-height: min(72vh, 760px);
+}
+
+.dash-panel-tall {
+  min-height: 520px;
+  height: 100%;
+}
+
+.dash-side-card {
+  align-self: start;
+}
+
+.dash-section-title {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Admin user list */
+.dash-user-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dash-user-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #101933;
+}
+
+.dash-user-row-email {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.dash-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 @media (max-width: 900px) {
+  .dash-page-grid {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
   .dash-root {
     flex-direction: column;
   }

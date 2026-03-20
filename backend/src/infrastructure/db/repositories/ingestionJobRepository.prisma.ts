@@ -6,7 +6,6 @@ import { getPrisma } from "@/infrastructure/db/prismaClient";
 
 export class PrismaIngestionJobRepository implements IngestionJobRepository {
   private readonly prisma = getPrisma();
-  private readonly prismaIngestionJob = (this.prisma as any).ingestionJob;
 
   async create(input: {
     id: string;
@@ -18,7 +17,7 @@ export class PrismaIngestionJobRepository implements IngestionJobRepository {
     storageObjectKey?: string | null;
     status: "queued" | "processing" | "indexed" | "failed";
   }) {
-    const created = await this.prismaIngestionJob.create({
+    const created = await this.prisma.ingestionJob.create({
       data: {
         id: input.id,
         tenantId: input.tenantId,
@@ -34,7 +33,7 @@ export class PrismaIngestionJobRepository implements IngestionJobRepository {
   }
 
   async getById(input: { tenantId: string; workspaceId?: string | null; jobId: string }) {
-    const found = await this.prismaIngestionJob.findFirst({
+    const found = await this.prisma.ingestionJob.findFirst({
       where: {
         id: input.jobId,
         OR: input.workspaceId
@@ -46,7 +45,7 @@ export class PrismaIngestionJobRepository implements IngestionJobRepository {
   }
 
   async listByTenant(input: { tenantId: string; workspaceId?: string | null; limit: number }) {
-    const rows = await this.prismaIngestionJob.findMany({
+    const rows = await this.prisma.ingestionJob.findMany({
       where: input.workspaceId
         ? {
             OR: [{ workspaceId: input.workspaceId }, { tenantId: input.tenantId, workspaceId: null }]
@@ -68,7 +67,7 @@ export class PrismaIngestionJobRepository implements IngestionJobRepository {
     setCompletedAt?: boolean;
     incrementAttempt?: boolean;
   }) {
-    await this.prismaIngestionJob.updateMany({
+    await this.prisma.ingestionJob.updateMany({
       where: input.workspaceId
         ? {
             id: input.jobId,

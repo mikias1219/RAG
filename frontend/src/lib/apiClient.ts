@@ -1,21 +1,40 @@
-import type { ChatResponse, IngestionJob, PaginatedDocuments, WorkspaceSummary } from "./types";
+import type {
+  ChatResponse,
+  IngestionJob,
+  PaginatedDocuments,
+  UserSummary,
+  WorkspaceProfileDetail,
+  WorkspaceSummary
+} from "./types";
 import { getAuthToken } from "./auth";
 
 const baseUrl = "/backend-api";
 
-async function handle(res: Response) {
+/** Parse JSON or tolerate empty body (e.g. 204 No Content from PATCH). */
+async function parseResponseBody(res: Response): Promise<unknown> {
+  const text = await res.text();
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new Error(`Invalid response from server (${res.status})`);
+  }
+}
+
+async function handle<T = Record<string, unknown>>(res: Response): Promise<T> {
+  const raw = await parseResponseBody(res);
+  const obj: Record<string, unknown> =
+    raw !== null && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
   if (!res.ok) {
     let message = `Request failed with ${res.status}`;
-    try {
-      const body = await res.json();
-      if (typeof body?.error?.message === "string") message = body.error.message;
-      else if (typeof body?.message === "string") message = body.message;
-    } catch {
-      // ignore
-    }
+    const err = obj.error as Record<string, unknown> | undefined;
+    if (typeof err?.message === "string") message = err.message;
+    else if (typeof obj.message === "string") message = obj.message;
     throw new Error(message);
   }
-  return res.json();
+  return obj as T;
 }
 
 function authHeaders(extra?: HeadersInit): HeadersInit {
@@ -36,7 +55,7 @@ export async function askQuestion(input: {
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(input)
   });
-  return handle(res);
+  return handle<ChatResponse>(res);
 }
 
 export async function listDocuments(page = 1, pageSize = 25): Promise<PaginatedDocuments> {
@@ -48,7 +67,7 @@ export async function listDocuments(page = 1, pageSize = 25): Promise<PaginatedD
     method: "GET",
     headers: authHeaders()
   });
-  return handle(res);
+  return handle<PaginatedDocuments>(res);
 }
 
 export async function listIngestionJobs(limit = 50): Promise<{ items: IngestionJob[] }> {
@@ -57,7 +76,7 @@ export async function listIngestionJobs(limit = 50): Promise<{ items: IngestionJ
     method: "GET",
     headers: authHeaders()
   });
-  return handle(res);
+  return handle<{ items: IngestionJob[] }>(res);
 }
 
 export async function retryIngestionJob(jobId: string): Promise<{ jobId: string; status: string }> {
@@ -65,7 +84,7 @@ export async function retryIngestionJob(jobId: string): Promise<{ jobId: string;
     method: "POST",
     headers: authHeaders({ "Content-Type": "application/json" })
   });
-  return handle(res);
+  return handle<{ jobId: string; status: string }>(res);
 }
 
 export async function login(input: { email: string; password: string }) {
@@ -81,7 +100,7 @@ export async function login(input: { email: string; password: string }) {
       pass: password
     })
   });
-  return handle(res);
+  return handle<{ token: string }>(res);
 }
 
 export async function register(input: { email: string; password: string; displayName?: string }) {
@@ -90,7 +109,7 @@ export async function register(input: { email: string; password: string; display
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input)
   });
-  return handle(res);
+  return handle<{ token: string }>(res);
 }
 
 export async function loginWithGoogle(idToken: string) {
@@ -99,7 +118,7 @@ export async function loginWithGoogle(idToken: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ idToken })
   });
-  return handle(res);
+  return handle<{ token: string }>(res);
 }
 
 export async function getMe() {
@@ -107,7 +126,10 @@ export async function getMe() {
     method: "GET",
     headers: authHeaders()
   });
-  return handle(res);
+  return handle<{
+    user: UserSummary;
+    workspaces: WorkspaceSummary[];
+  }>(res);
 }
 
 export async function listWorkspaces(): Promise<{ items: WorkspaceSummary[] }> {
@@ -115,7 +137,7 @@ export async function listWorkspaces(): Promise<{ items: WorkspaceSummary[] }> {
     method: "GET",
     headers: authHeaders()
   });
-  return handle(res);
+  return handle<{ items: WorkspaceSummary[] }>(res);
 }
 
 export async function switchWorkspace(workspaceId: string) {
@@ -124,7 +146,7 @@ export async function switchWorkspace(workspaceId: string) {
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ workspaceId })
   });
-  return handle(res);
+  return handle<{ token?: string }>(res);
 }
 
 export async function getWorkspaceProfile() {
@@ -132,7 +154,7 @@ export async function getWorkspaceProfile() {
     method: "GET",
     headers: authHeaders()
   });
-  return handle(res);
+  return handle<{ workspace: WorkspaceProfileDetail }>(res);
 }
 
 export async function updateWorkspaceProfile(input: {
@@ -144,7 +166,7 @@ export async function updateWorkspaceProfile(input: {
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(input)
   });
-  return handle(res);
+  return handle<{ workspace: WorkspaceProfileDetail }>(res);
 }
 
 export async function updateMe(input: { displayName: string }) {
@@ -153,7 +175,7 @@ export async function updateMe(input: { displayName: string }) {
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(input)
   });
-  return handle(res);
+  return handle<Record<string, unknown>>(res);
 }
 
 export async function listUsers() {
@@ -161,7 +183,7 @@ export async function listUsers() {
     method: "GET",
     headers: authHeaders()
   });
-  return handle(res);
+  return handle<{ items: UserSummary[] }>(res);
 }
 
 export async function updateUserStatus(userId: string, status: "approved" | "rejected") {
@@ -170,7 +192,7 @@ export async function updateUserStatus(userId: string, status: "approved" | "rej
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ status })
   });
-  return handle(res);
+  return handle<Record<string, never>>(res);
 }
 
 export async function updateUserRole(userId: string, role: "user" | "admin") {
@@ -179,7 +201,7 @@ export async function updateUserRole(userId: string, role: "user" | "admin") {
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ role })
   });
-  return handle(res);
+  return handle<Record<string, never>>(res);
 }
 
 export type WorkflowDto = {
@@ -201,7 +223,7 @@ export async function listWorkflows(limit = 50): Promise<{ items: WorkflowDto[] 
     method: "GET",
     headers: authHeaders()
   });
-  return handle(res);
+  return handle<{ items: WorkflowDto[] }>(res);
 }
 
 export async function createWorkflow(input: {
@@ -214,12 +236,12 @@ export async function createWorkflow(input: {
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(input)
   });
-  return handle(res);
+  return handle<{ workflow: WorkflowDto }>(res);
 }
 
 export async function listAgents(): Promise<{ agents: unknown[] }> {
   const res = await fetch(`${baseUrl}/agents`, { method: "GET", headers: authHeaders() });
-  return handle(res);
+  return handle<{ agents: unknown[] }>(res);
 }
 
 export async function runAgent(agentId: string, context: Record<string, unknown>) {
@@ -228,7 +250,7 @@ export async function runAgent(agentId: string, context: Record<string, unknown>
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ context })
   });
-  return handle(res);
+  return handle<Record<string, unknown>>(res);
 }
 
 export type AuditLogRow = {
@@ -251,7 +273,7 @@ export async function listAuditLogs(limit = 100): Promise<{ items: AuditLogRow[]
     method: "GET",
     headers: authHeaders()
   });
-  return handle(res);
+  return handle<{ items: AuditLogRow[] }>(res);
 }
 
 export type WorkflowEvaluateResult = { matched: boolean; workflowId: string };
@@ -265,6 +287,6 @@ export async function evaluateWorkflow(
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ context })
   });
-  return handle(res);
+  return handle<WorkflowEvaluateResult>(res);
 }
 

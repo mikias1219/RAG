@@ -34,6 +34,7 @@ export type UserSummary = {
   displayName?: string | null;
   role: string;
   status: string;
+  workspaceId?: string | null;
   createdAt: string;
 };
 
@@ -46,6 +47,18 @@ export type WorkspaceSummary = {
   membershipRole: string;
   industry?: string;
   domainFocus?: string | null;
+};
+
+/** GET/PATCH /auth/workspace-profile — nested `workspace` object */
+export type WorkspaceProfileDetail = {
+  id: string;
+  tenantId: string;
+  companyId: string;
+  slug: string;
+  displayName: string;
+  industry: "general" | "banking" | "construction";
+  domainFocus: string | null;
+  membershipRole: string;
 };
 
 export type PaginatedDocuments = {
