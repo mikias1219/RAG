@@ -16,7 +16,7 @@ export function buildRoutes(opts: { env: AppEnv; logger: Logger }) {
   const router = Router();
   const container = buildContainer({ env, logger });
 
-  router.get("/health", healthController());
+  router.get("/health", healthController(env));
   router.use("/auth", authController(container));
   router.use("/documents", authMiddleware(container.authService), documentsController(container));
   router.use("/chat", authMiddleware(container.authService), chatController(container));

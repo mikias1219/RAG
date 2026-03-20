@@ -147,7 +147,7 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
       }
     }
   });
-  const chatService = new ChatService({ chatRepo, ragService });
+  const chatService = new ChatService({ chatRepo, ragService, documentsRepo });
   const authService = new AuthService({
     jwtSecret: env.JWT_SECRET,
     jwtExpiresIn: env.JWT_EXPIRES_IN,

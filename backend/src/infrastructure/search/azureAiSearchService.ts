@@ -38,6 +38,13 @@ export class AzureAiSearchService implements SearchService {
     }
   }
 
+  async deleteBySearchDocumentIds(input: { searchDocumentIds: string[] }): Promise<void> {
+    const ids = Array.from(new Set(input.searchDocumentIds.filter(Boolean)));
+    if (ids.length === 0) return;
+    const docs = ids.map((id) => ({ id })) as unknown as SearchChunkDoc[];
+    await withRetry(() => this.client.deleteDocuments(docs), { maxAttempts: 2, delayMs: 500 });
+  }
+
   async querySimilar(input: {
     tenantId: string;
     embedding: number[];

@@ -12,5 +12,6 @@ export interface StorageService {
   }): Promise<UploadedObject>;
   /** Fetch object by full blob key returned from putObject (container-relative path). */
   getObject(input: { blobKey: string }): Promise<Buffer>;
+  deleteObject(input: { blobKey: string }): Promise<void>;
 }
 

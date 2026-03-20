@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import type { DocumentSummary, IngestionJob } from "@/lib/types";
-import { listDocuments, listIngestionJobs, retryIngestionJob } from "@/lib/apiClient";
+import {
+  deleteDocument,
+  listDocuments,
+  listIngestionJobs,
+  renameDocument,
+  retryIngestionJob
+} from "@/lib/apiClient";
 import { UploadDropzone } from "./UploadDropzone";
 
 type Props = {
@@ -21,6 +27,7 @@ export function DocumentsPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [savingDocId, setSavingDocId] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -146,7 +153,7 @@ export function DocumentsPanel({
             >
               Select all
             </button>
-            <button className="composer-send" type="button" onClick={() => onSelectionChange?.([])}>
+            <button className="composer-send" type="button" disabled={selectedDocumentIds.length === 0} onClick={() => onSelectionChange?.([])}>
               Clear selection
             </button>
           </div>
@@ -180,14 +187,53 @@ export function DocumentsPanel({
                     {formatBytes(d.sizeBytes)} • {new Date(d.createdAt).toLocaleString()}
                   </span>
                 </div>
-                <a
-                  href={d.blobUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="document-link"
-                >
-                  Open
-                </a>
+                <div className="doc-actions">
+                  <button
+                    type="button"
+                    className="dash-btn-sm"
+                    disabled={savingDocId === d.id}
+                    onClick={async () => {
+                      const next = window.prompt("Rename document", d.filename)?.trim();
+                      if (!next || next === d.filename) return;
+                      setSavingDocId(d.id);
+                      setError(null);
+                      try {
+                        await renameDocument(d.id, next);
+                        await refresh();
+                      } catch (e: unknown) {
+                        setError(e instanceof Error ? e.message : "Rename failed");
+                      } finally {
+                        setSavingDocId(null);
+                      }
+                    }}
+                  >
+                    Rename
+                  </button>
+                  <button
+                    type="button"
+                    className="dash-btn-sm"
+                    disabled={savingDocId === d.id}
+                    onClick={async () => {
+                      if (!window.confirm(`Delete "${d.filename}"? This will remove chunks and index entries.`)) return;
+                      setSavingDocId(d.id);
+                      setError(null);
+                      try {
+                        await deleteDocument(d.id);
+                        onSelectionChange?.(selectedDocumentIds.filter((id) => id !== d.id));
+                        await refresh();
+                      } catch (e: unknown) {
+                        setError(e instanceof Error ? e.message : "Delete failed");
+                      } finally {
+                        setSavingDocId(null);
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
+                  <a href={d.blobUrl} target="_blank" rel="noreferrer" className="document-link">
+                    Open
+                  </a>
+                </div>
               </div>
             );
           })}

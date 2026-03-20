@@ -42,6 +42,12 @@ export class AzureBlobStorageService implements StorageService {
     const download = await blob.downloadToBuffer();
     return download;
   }
+
+  async deleteObject(input: { blobKey: string }): Promise<void> {
+    const container = this.blobService.getContainerClient(this.opts.containerName);
+    const blob = container.getBlobClient(input.blobKey);
+    await blob.deleteIfExists();
+  }
 }
 
 function sanitize(s: string) {

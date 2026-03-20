@@ -63,6 +63,23 @@ export function loadEnv(raw: NodeJS.ProcessEnv = process.env): AppEnv {
   if (env.INGESTION_QUEUE_ENABLED && !env.REDIS_URL) {
     throw new Error("REDIS_URL is required when INGESTION_QUEUE_ENABLED=true");
   }
+  if (env.STORAGE_PROVIDER === "azure" && !env.AZURE_STORAGE_CONNECTION_STRING) {
+    throw new Error("AZURE_STORAGE_CONNECTION_STRING is required when STORAGE_PROVIDER=azure");
+  }
+  if (env.SEARCH_PROVIDER === "azure" && (!env.AZURE_AI_SEARCH_ENDPOINT || !env.AZURE_AI_SEARCH_API_KEY)) {
+    throw new Error("AZURE_AI_SEARCH_ENDPOINT and AZURE_AI_SEARCH_API_KEY are required when SEARCH_PROVIDER=azure");
+  }
+  if (env.AI_PROVIDER === "azure-openai" && (!env.AZURE_OPENAI_ENDPOINT || !env.AZURE_OPENAI_API_KEY)) {
+    throw new Error("AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY are required when AI_PROVIDER=azure-openai");
+  }
+  if (
+    env.DOCUMENT_INTELLIGENCE_PROVIDER === "azure" &&
+    (!env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT || !env.AZURE_DOCUMENT_INTELLIGENCE_API_KEY)
+  ) {
+    throw new Error(
+      "AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT and AZURE_DOCUMENT_INTELLIGENCE_API_KEY are required when DOCUMENT_INTELLIGENCE_PROVIDER=azure"
+    );
+  }
   return env;
 }
 

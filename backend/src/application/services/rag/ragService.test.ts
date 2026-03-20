@@ -17,6 +17,7 @@ describe("RagService", () => {
 
     searchService = {
       upsertChunks: jest.fn(async () => {}),
+      deleteBySearchDocumentIds: jest.fn(async () => {}),
       querySimilar: jest.fn(async () => [
         {
           chunkId: "chunk1",

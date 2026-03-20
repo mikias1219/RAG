@@ -34,6 +34,10 @@ export function ChatShell({ onSourcesChange, selectedDocumentIds = [], onSelecti
 
   async function handleSend(text: string) {
     if (!text.trim()) return;
+    if (selectedDocumentIds.length === 0) {
+      setError("Select at least one document to ask a question.");
+      return;
+    }
     setError(null);
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", content: text };
     setMessages((prev) => [...prev, userMsg]);
@@ -42,7 +46,7 @@ export function ChatShell({ onSourcesChange, selectedDocumentIds = [], onSelecti
       const res: ChatResponse = await askQuestion({
         question: text,
         sessionId,
-        documentIds: selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined
+        documentIds: selectedDocumentIds
       });
       setSessionId(res.sessionId);
       const assistantMsg: ChatMessage = {
@@ -70,21 +74,19 @@ export function ChatShell({ onSourcesChange, selectedDocumentIds = [], onSelecti
           <h2 className="panel-title">AI Assistant</h2>
           <p className="panel-subtitle">
             Ask questions across your indexed documents
-            {selectedDocumentIds.length > 0 ? ` (${selectedDocumentIds.length} selected)` : " (all documents)"}
+            {` (${selectedDocumentIds.length} selected)`}
           </p>
+          <div className="scope-chip">
+            {selectedDocumentIds.length > 0
+              ? `Answering from ${selectedDocumentIds.length} selected document(s)`
+              : "Selection required before sending"}
+          </div>
           <div style={{ marginTop: 8, position: "relative" }}>
             <button className="composer-send" onClick={() => setSelectorOpen((v) => !v)} type="button">
               {selectedDocumentIds.length > 0 ? `Selected: ${selectedDocumentIds.length}` : "Select documents"}
             </button>
             {selectorOpen && (
               <div className="dropdown-panel">
-                <button
-                  className="document-link"
-                  onClick={() => onSelectionChange?.([])}
-                  type="button"
-                >
-                  Use all documents
-                </button>
                 {docs.map((doc) => {
                   const checked = selectedDocumentIds.includes(doc.id);
                   return (
@@ -112,9 +114,7 @@ export function ChatShell({ onSourcesChange, selectedDocumentIds = [], onSelecti
 
       <div ref={scrollRef} className="chat-stream">
         <MessageList messages={messages} />
-        {error && (
-          <div className="alert-error">{error}</div>
-        )}
+        {error && <div className="alert-error">{error}</div>}
         {messages.length === 0 && !pending && (
           <div className="empty-state">
             <p>Ready to chat.</p>
@@ -124,7 +124,7 @@ export function ChatShell({ onSourcesChange, selectedDocumentIds = [], onSelecti
       </div>
 
       <div className="chat-composer-wrap">
-        <MessageComposer disabled={pending} onSend={handleSend} />
+        <MessageComposer disabled={pending || selectedDocumentIds.length === 0} onSend={handleSend} />
       </div>
     </div>
   );

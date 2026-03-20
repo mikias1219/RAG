@@ -2,9 +2,14 @@ import { Router } from "express";
 import multer from "multer";
 import { randomUUID } from "crypto";
 import type { Container } from "@/infrastructure/container";
-import { badRequest, tooLarge } from "@/domain/errors/AppError";
+import { badRequest, notFound, tooLarge } from "@/domain/errors/AppError";
 import { toPagination } from "@/domain/valueObjects/Pagination";
 import { asyncHandler } from "@/shared/utils/asyncHandler";
+import { z } from "zod";
+
+const patchBody = z.object({
+  filename: z.string().min(1).max(255)
+});
 
 export function documentsController(container: Container) {
   const router = Router();
@@ -57,6 +62,37 @@ export function documentsController(container: Container) {
       });
 
       res.status(202).json(result);
+    })
+  );
+
+  router.patch(
+    "/:documentId",
+    asyncHandler(async (req, res) => {
+      const auth = (req as any).auth;
+      const body = patchBody.safeParse(req.body);
+      if (!body.success) throw badRequest("Invalid body", body.error.flatten());
+      const updated = await container.ingestDocumentService.renameDocument({
+        tenantId: auth.tenantId,
+        workspaceId: auth.workspaceId ?? null,
+        documentId: req.params.documentId,
+        filename: body.data.filename.trim()
+      });
+      if (!updated) throw notFound("Document not found");
+      res.json({ document: updated });
+    })
+  );
+
+  router.delete(
+    "/:documentId",
+    asyncHandler(async (req, res) => {
+      const auth = (req as any).auth;
+      const deleted = await container.ingestDocumentService.deleteDocument({
+        tenantId: auth.tenantId,
+        workspaceId: auth.workspaceId ?? null,
+        documentId: req.params.documentId
+      });
+      if (!deleted) throw notFound("Document not found");
+      res.status(204).send();
     })
   );
 

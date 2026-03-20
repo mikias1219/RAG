@@ -78,6 +78,52 @@ export class PrismaDocumentRepository implements DocumentRepository {
     return (found as unknown as Document) ?? null;
   }
 
+  async renameDocument(input: {
+    tenantId: string;
+    workspaceId?: string | null;
+    documentId: string;
+    filename: string;
+  }) {
+    const updated = await this.prismaDocument.updateMany({
+      where: {
+        id: input.documentId,
+        ...this.workspaceCompatibleWhere({ tenantId: input.tenantId, workspaceId: input.workspaceId })
+      },
+      data: { filename: input.filename }
+    });
+    if (updated.count === 0) return null;
+    return this.getDocument({
+      tenantId: input.tenantId,
+      workspaceId: input.workspaceId,
+      documentId: input.documentId
+    });
+  }
+
+  async listChunkSearchDocumentIds(input: {
+    tenantId: string;
+    workspaceId?: string | null;
+    documentId: string;
+  }) {
+    const rows = await this.prismaChunk.findMany({
+      where: {
+        documentId: input.documentId,
+        ...this.workspaceCompatibleWhere({ tenantId: input.tenantId, workspaceId: input.workspaceId })
+      },
+      select: { searchDocumentId: true }
+    });
+    return rows.map((r: any) => r.searchDocumentId).filter(Boolean);
+  }
+
+  async deleteDocument(input: { tenantId: string; workspaceId?: string | null; documentId: string }) {
+    const deleted = await this.prismaDocument.deleteMany({
+      where: {
+        id: input.documentId,
+        ...this.workspaceCompatibleWhere({ tenantId: input.tenantId, workspaceId: input.workspaceId })
+      }
+    });
+    return deleted.count > 0;
+  }
+
   async updateChunkEmbeddingMetadata(input: {
     tenantId: string;
     chunkId: string;

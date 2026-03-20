@@ -1,11 +1,14 @@
 import type { ChatRepository } from "@/domain/ports/chatRepository";
 import type { RagService } from "@/application/services/rag/ragService";
+import type { DocumentRepository } from "@/domain/ports/documentRepository";
+import { badRequest, forbidden } from "@/domain/errors/AppError";
 
 export class ChatService {
   constructor(
     private readonly deps: {
       chatRepo: ChatRepository;
       ragService: RagService;
+      documentsRepo: DocumentRepository;
     }
   ) {}
 
@@ -17,6 +20,22 @@ export class ChatService {
     question: string;
     documentIds?: string[];
   }) {
+    const documentIds = Array.from(new Set((input.documentIds ?? []).filter(Boolean)));
+    if (documentIds.length === 0) {
+      throw badRequest("Select at least one document before asking a question.");
+    }
+
+    for (const documentId of documentIds) {
+      const doc = await this.deps.documentsRepo.getDocument({
+        tenantId: input.tenantId,
+        workspaceId: input.workspaceId ?? null,
+        documentId
+      });
+      if (!doc) {
+        throw forbidden("One or more selected documents are not accessible in this workspace.");
+      }
+    }
+
     const session =
       input.sessionId ??
       (await this.deps.chatRepo.createSession({
@@ -37,7 +56,7 @@ export class ChatService {
       tenantId: input.tenantId,
       workspaceId: input.workspaceId ?? null,
       question: input.question,
-      documentIds: input.documentIds
+      documentIds
     });
 
     await this.deps.chatRepo.appendMessage({

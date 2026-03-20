@@ -276,6 +276,16 @@ a {
   color: #f7dc8d;
 }
 
+.scope-chip {
+  margin-top: 8px;
+  display: inline-block;
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
 .chat-stream,
 .docs-content {
   flex: 1;
@@ -604,6 +614,12 @@ a {
 
 .document-link:hover {
   color: #b8c8ff;
+}
+
+.doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .alert-error,

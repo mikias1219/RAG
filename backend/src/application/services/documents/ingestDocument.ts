@@ -132,6 +132,36 @@ export class IngestDocumentService {
     return this.deps.jobsRepo.listByTenant(input);
   }
 
+  async renameDocument(input: {
+    tenantId: string;
+    workspaceId?: string | null;
+    documentId: string;
+    filename: string;
+  }) {
+    return this.deps.documentsRepo.renameDocument(input);
+  }
+
+  async deleteDocument(input: { tenantId: string; workspaceId?: string | null; documentId: string }) {
+    const doc = await this.deps.documentsRepo.getDocument(input);
+    if (!doc) return false;
+
+    const searchDocumentIds = await this.deps.documentsRepo.listChunkSearchDocumentIds(input);
+    if (searchDocumentIds.length > 0) {
+      await this.deps.search.deleteBySearchDocumentIds({ searchDocumentIds });
+    }
+
+    const deleted = await this.deps.documentsRepo.deleteDocument(input);
+    if (!deleted) return false;
+
+    const blobKey = this.blobKeyFromUrl(doc.blobUrl);
+    if (blobKey) {
+      await this.deps.storage.deleteObject({ blobKey }).catch(() => {
+        /* best effort cleanup */
+      });
+    }
+    return true;
+  }
+
   async retryJob(input: { tenantId: string; workspaceId?: string | null; jobId: string }) {
     const job = await this.deps.jobsRepo.getById(input);
     if (!job) throw badRequest("Job not found");
@@ -369,6 +399,18 @@ export class IngestDocumentService {
     });
     if (!doc) throw badRequest("Document metadata was not found");
     return doc.blobUrl;
+  }
+
+  private blobKeyFromUrl(blobUrl: string): string | null {
+    try {
+      const u = new URL(blobUrl);
+      const path = u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
+      const slash = path.indexOf("/");
+      if (slash < 0) return null;
+      return path.slice(slash + 1);
+    } catch {
+      return null;
+    }
   }
 }
 

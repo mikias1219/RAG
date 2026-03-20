@@ -1,5 +1,6 @@
 import type {
   ChatResponse,
+  DocumentSummary,
   IngestionJob,
   PaginatedDocuments,
   UserSummary,
@@ -48,7 +49,7 @@ function authHeaders(extra?: HeadersInit): HeadersInit {
 export async function askQuestion(input: {
   question: string;
   sessionId?: string;
-  documentIds?: string[];
+  documentIds: string[];
 }): Promise<ChatResponse> {
   const res = await fetch(`${baseUrl}/chat/ask`, {
     method: "POST",
@@ -56,6 +57,23 @@ export async function askQuestion(input: {
     body: JSON.stringify(input)
   });
   return handle<ChatResponse>(res);
+}
+
+export async function renameDocument(documentId: string, filename: string): Promise<{ document: DocumentSummary }> {
+  const res = await fetch(`${baseUrl}/documents/${documentId}`, {
+    method: "PATCH",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ filename })
+  });
+  return handle<{ document: DocumentSummary }>(res);
+}
+
+export async function deleteDocument(documentId: string): Promise<void> {
+  const res = await fetch(`${baseUrl}/documents/${documentId}`, {
+    method: "DELETE",
+    headers: authHeaders()
+  });
+  await handle<Record<string, never>>(res);
 }
 
 export async function listDocuments(page = 1, pageSize = 25): Promise<PaginatedDocuments> {
