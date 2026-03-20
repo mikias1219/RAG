@@ -21,6 +21,10 @@ import { RagService } from "@/application/services/rag/ragService";
 import { IngestDocumentService } from "@/application/services/documents/ingestDocument";
 import { ChatService } from "@/application/services/chat/chatService";
 import { AuthService } from "@/application/services/auth/authService";
+import { WorkflowService } from "@/application/services/workflow/workflowService";
+import { AgentService } from "@/application/services/workflow/agentService";
+import { createIngestionQueue } from "@/infrastructure/queue/ingestionQueue";
+import type { Queue } from "bullmq";
 
 export type Container = {
   logger: Logger;
@@ -37,6 +41,9 @@ export type Container = {
   ingestDocumentService: IngestDocumentService;
   chatService: ChatService;
   authService: AuthService;
+  workflowService: WorkflowService;
+  agentService: AgentService;
+  ingestionQueue: Queue | null;
 };
 
 export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container {
@@ -99,6 +106,10 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
         });
 
   const ragService = new RagService({ ai, search, cache, topK: env.RAG_TOP_K });
+  const ingestionQueue: Queue | null =
+    env.INGESTION_QUEUE_ENABLED && env.REDIS_URL ? createIngestionQueue(env.REDIS_URL) : null;
+  const workflowService = new WorkflowService();
+  const agentService = new AgentService();
   const ingestDocumentService = new IngestDocumentService({
     env,
     logger,
@@ -107,7 +118,8 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
     storage,
     documentsRepo,
     jobsRepo,
-    documentIntelligence
+    documentIntelligence,
+    ingestionQueue
   });
   const chatService = new ChatService({ chatRepo, ragService });
   const authService = new AuthService({
@@ -130,7 +142,10 @@ export function buildContainer(opts: { env: AppEnv; logger: Logger }): Container
     ragService,
     ingestDocumentService,
     chatService,
-    authService
+    authService,
+    workflowService,
+    agentService,
+    ingestionQueue
   };
 }
 

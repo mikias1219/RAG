@@ -77,5 +77,21 @@ export class PrismaDocumentRepository implements DocumentRepository {
     });
     return (found as unknown as Document) ?? null;
   }
+
+  async updateChunkEmbeddingMetadata(input: {
+    tenantId: string;
+    chunkId: string;
+    searchDocumentId: string;
+    embeddingModel: string;
+  }) {
+    await this.prismaChunk.updateMany({
+      where: { id: input.chunkId, tenantId: input.tenantId },
+      data: {
+        searchDocumentId: input.searchDocumentId,
+        embeddingModel: input.embeddingModel,
+        embeddedAt: new Date()
+      }
+    });
+  }
 }
 

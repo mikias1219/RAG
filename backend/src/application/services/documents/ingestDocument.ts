@@ -1,4 +1,5 @@
 import type { Logger } from "pino";
+import type { Queue } from "bullmq";
 import type { AppEnv } from "@/config/env";
 import type { AiService } from "@/domain/ports/aiService";
 import type { SearchService, SearchChunkDoc } from "@/domain/ports/searchService";
@@ -20,6 +21,7 @@ export class IngestDocumentService {
       documentsRepo: DocumentRepository;
       jobsRepo: IngestionJobRepository;
       documentIntelligence: DocumentIntelligenceService;
+      ingestionQueue?: Queue | null;
     }
   ) {}
 
@@ -60,13 +62,27 @@ export class IngestDocumentService {
       documentId,
       filename: input.filename,
       contentType: input.contentType,
+      storageObjectKey: uploaded.key,
       status: "queued"
     });
-    this.bufferedBytes.set(jobId, input.bytes);
-    // Fire-and-forget processing to decouple upload request latency from indexing.
-    setTimeout(() => {
-      void this.processJob({ tenantId, workspaceId: input.workspaceId ?? null, jobId });
-    }, 0);
+
+    const useQueue = Boolean(this.deps.ingestionQueue && this.deps.env.INGESTION_QUEUE_ENABLED);
+    if (useQueue && this.deps.ingestionQueue) {
+      await this.deps.ingestionQueue.add(
+        "ingest",
+        {
+          tenantId,
+          workspaceId: input.workspaceId ?? null,
+          jobId
+        },
+        { jobId: `${tenantId}:${jobId}`.replace(/[^a-zA-Z0-9:_-]/g, "_") }
+      );
+    } else {
+      this.bufferedBytes.set(jobId, input.bytes);
+      setTimeout(() => {
+        void this.processJob({ tenantId, workspaceId: input.workspaceId ?? null, jobId });
+      }, 0);
+    }
 
     return {
       jobId,
@@ -74,6 +90,23 @@ export class IngestDocumentService {
       blobUrl: uploaded.url,
       status: "queued"
     };
+  }
+
+  /** Called by BullMQ worker process. */
+  async processJobFromQueue(input: { tenantId: string; workspaceId?: string | null; jobId: string }) {
+    await this.deps.jobsRepo.setStatus({
+      tenantId: input.tenantId,
+      workspaceId: input.workspaceId ?? null,
+      jobId: input.jobId,
+      status: "processing",
+      setStartedAt: true,
+      incrementAttempt: true
+    });
+    await this.runIngestionPipeline({
+      tenantId: input.tenantId,
+      workspaceId: input.workspaceId ?? null,
+      jobId: input.jobId
+    });
   }
 
   async getJob(input: { tenantId: string; workspaceId?: string | null; jobId: string }) {
@@ -88,8 +121,8 @@ export class IngestDocumentService {
     const job = await this.deps.jobsRepo.getById(input);
     if (!job) throw badRequest("Job not found");
     if (job.status !== "failed") throw badRequest("Only failed jobs can be retried");
-    const bytes = this.bufferedBytes.get(job.id);
-    if (!bytes) throw badRequest("Retry window expired. Re-upload the file to retry.");
+    const hasBytes = this.bufferedBytes.has(job.id) || Boolean(job.storageObjectKey);
+    if (!hasBytes) throw badRequest("Retry not possible: upload buffer expired and no storage key.");
     await this.deps.jobsRepo.setStatus({
       tenantId: input.tenantId,
       workspaceId: input.workspaceId ?? null,
@@ -97,40 +130,58 @@ export class IngestDocumentService {
       status: "queued",
       errorMessage: null
     });
-    setTimeout(() => {
-      void this.processJob({
-        tenantId: input.tenantId,
-        workspaceId: input.workspaceId ?? null,
-        jobId: input.jobId
-      });
-    }, 0);
+    const useQueue = Boolean(this.deps.ingestionQueue && this.deps.env.INGESTION_QUEUE_ENABLED);
+    if (useQueue && this.deps.ingestionQueue) {
+      await this.deps.ingestionQueue.add(
+        "ingest",
+        {
+          tenantId: input.tenantId,
+          workspaceId: input.workspaceId ?? null,
+          jobId: input.jobId
+        },
+        { jobId: `retry_${input.tenantId}_${input.jobId}`.replace(/[^a-zA-Z0-9:_-]/g, "_") }
+      );
+    } else {
+      setTimeout(() => {
+        void this.processJob({
+          tenantId: input.tenantId,
+          workspaceId: input.workspaceId ?? null,
+          jobId: input.jobId
+        });
+      }, 0);
+    }
     return { jobId: input.jobId, status: "queued" };
   }
 
   private async processJob(input: { tenantId: string; workspaceId?: string | null; jobId: string }) {
+    await this.deps.jobsRepo.setStatus({
+      tenantId: input.tenantId,
+      workspaceId: input.workspaceId ?? null,
+      jobId: input.jobId,
+      status: "processing",
+      setStartedAt: true,
+      incrementAttempt: true
+    });
+    await this.runIngestionPipeline(input);
+  }
+
+  private async runIngestionPipeline(input: { tenantId: string; workspaceId?: string | null; jobId: string }) {
     const { tenantId, jobId } = input;
     const workspaceId = input.workspaceId ?? null;
     const job = await this.deps.jobsRepo.getById({ tenantId, workspaceId, jobId });
     if (!job) return;
-    const bytes = this.bufferedBytes.get(jobId);
+    const bytes = await this.resolveJobBytes(job);
     if (!bytes) {
       await this.deps.jobsRepo.setStatus({
         tenantId,
         workspaceId,
         jobId,
         status: "failed",
-        errorMessage: "Upload payload no longer available for processing",
+        errorMessage: "Could not load document bytes for processing",
         setCompletedAt: true
       });
       return;
     }
-    await this.deps.jobsRepo.setStatus({
-      tenantId,
-      workspaceId,
-      jobId,
-      status: "processing",
-      setStartedAt: true
-    });
     try {
       const extractedText = await this.extractText({
         bytes,
@@ -166,6 +217,18 @@ export class IngestDocumentService {
       });
       this.deps.logger.error({ tenantId, jobId, err: error }, "ingestion job failed");
     }
+  }
+
+  private async resolveJobBytes(job: {
+    id: string;
+    storageObjectKey: string | null;
+  }): Promise<Buffer | null> {
+    const fromBuffer = this.bufferedBytes.get(job.id);
+    if (fromBuffer) return fromBuffer;
+    if (job.storageObjectKey) {
+      return this.deps.storage.getObject({ blobKey: job.storageObjectKey });
+    }
+    return null;
   }
 
   private async indexExtracted(input: {
@@ -204,10 +267,12 @@ export class IngestDocumentService {
     });
 
     const searchDocs: SearchChunkDoc[] = [];
+    const embeddingModel = this.deps.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT;
     for (const row of chunkRows) {
       const emb = await this.deps.ai.embedText({ text: row.text });
+      const searchDocId = makeSearchKey(tenantId, documentId, row.id);
       searchDocs.push({
-        id: makeSearchKey(tenantId, documentId, row.id),
+        id: searchDocId,
         tenantId,
         documentId,
         chunkId: row.id,
@@ -220,6 +285,12 @@ export class IngestDocumentService {
           contentType: input.contentType
         },
         createdAtIso: new Date().toISOString()
+      });
+      await this.deps.documentsRepo.updateChunkEmbeddingMetadata({
+        tenantId,
+        chunkId: row.id,
+        searchDocumentId: searchDocId,
+        embeddingModel
       });
     }
 
@@ -262,12 +333,9 @@ function safeFilename(name: string) {
 }
 
 function cryptoRandomId() {
-  // Node 22 supports crypto.randomUUID()
   return require("crypto").randomUUID();
 }
 
 function makeSearchKey(tenantId: string, documentId: string, chunkId: string) {
-  // Azure AI Search keys must avoid separators like ":".
   return `t_${tenantId}__d_${documentId}__c_${chunkId}`.replace(/[^A-Za-z0-9_=-]/g, "_");
 }
-

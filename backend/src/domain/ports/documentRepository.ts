@@ -16,5 +16,11 @@ export interface DocumentRepository {
     chunks: Array<Omit<Chunk, "createdAt">>;
   }): Promise<void>;
   getDocument(input: { tenantId: string; workspaceId?: string | null; documentId: string }): Promise<Document | null>;
+  updateChunkEmbeddingMetadata(input: {
+    tenantId: string;
+    chunkId: string;
+    searchDocumentId: string;
+    embeddingModel: string;
+  }): Promise<void>;
 }
 

@@ -17,6 +17,19 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -25,6 +38,8 @@ services:
       NODE_ENV: development
       PORT: 8080
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai102?schema=public
+      REDIS_URL: redis://redis:6379
+      INGESTION_QUEUE_ENABLED: "true"
       AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-UseDevelopmentStorage=true}
       AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
       AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
@@ -40,17 +55,77 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./backend/src:/app/src
       - ./backend/prisma:/app/prisma
     command: npm run dev
+
+  ingestion-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      JWT_SECRET: dev-only-change-this-secret-for-worker-min-16
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai102?schema=public
+      REDIS_URL: redis://redis:6379
+      INGESTION_QUEUE_ENABLED: "true"
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-UseDevelopmentStorage=true}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_AI_SEARCH_ENDPOINT: ${AZURE_AI_SEARCH_ENDPOINT}
+      AZURE_AI_SEARCH_API_KEY: ${AZURE_AI_SEARCH_API_KEY}
+      CHUNK_SIZE: 900
+      CHUNK_OVERLAP: 150
+      DOCUMENT_INTELLIGENCE_PROVIDER: ${DOCUMENT_INTELLIGENCE_PROVIDER:-none}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/prisma:/app/prisma
+    command: npm run worker:ingestion
+
+  ai-python:
+    build:
+      context: ./services/ai-python
+      dockerfile: Dockerfile
+    environment:
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${AZURE_OPENAI_EMBEDDING_DEPLOYMENT:-text-embedding-3-small}
+      AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION:-2024-02-15-preview}
+    ports:
+      - "8000:8000"
+    profiles:
+      - full
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    environment:
+      PORT: 4000
+      BACKEND_URL: http://backend:8080
+    ports:
+      - "4000:4000"
+    depends_on:
+      - backend
+    profiles:
+      - full
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://backend:8080/api
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api
     ports:
       - "3000:3000"
     depends_on:
@@ -61,3 +136,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

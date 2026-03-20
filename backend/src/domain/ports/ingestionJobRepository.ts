@@ -5,8 +5,10 @@ export type IngestionJobRecord = {
   documentId: string;
   filename: string;
   contentType: string;
+  storageObjectKey: string | null;
   status: string;
   errorMessage: string | null;
+  attemptCount: number;
   createdAt: Date;
   startedAt: Date | null;
   completedAt: Date | null;
@@ -20,6 +22,7 @@ export interface IngestionJobRepository {
     documentId: string;
     filename: string;
     contentType: string;
+    storageObjectKey?: string | null;
     status: "queued" | "processing" | "indexed" | "failed";
   }): Promise<IngestionJobRecord>;
   getById(input: { tenantId: string; workspaceId?: string | null; jobId: string }): Promise<IngestionJobRecord | null>;
@@ -32,6 +35,7 @@ export interface IngestionJobRepository {
     errorMessage?: string | null;
     setStartedAt?: boolean;
     setCompletedAt?: boolean;
+    incrementAttempt?: boolean;
   }): Promise<void>;
 }
 

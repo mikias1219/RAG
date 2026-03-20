@@ -15,13 +15,22 @@
   box-sizing: border-box;
 }
 
-html,
+html {
+  margin: 0;
+  min-height: 100%;
+}
+
 body {
   margin: 0;
-  height: 100%;
+  min-height: 100%;
   background: radial-gradient(circle at top, #121d37 0%, var(--bg) 46%);
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+/* Dashboard locks scroll to the main pane; login/marketing can scroll the page */
+body:has(.dash-root) {
+  height: 100vh;
   overflow: hidden;
 }
 
@@ -31,10 +40,18 @@ a {
 }
 
 .app-shell {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.app-shell:has(.dash-root) {
+  height: 100vh;
   overflow: hidden;
+}
+
+.app-shell:has(.dash-root) .footer-minimal {
+  display: none;
 }
 
 .container {
@@ -107,6 +124,20 @@ a {
   min-height: 0;
   padding: 20px 0;
   overflow: hidden;
+}
+
+.content-fullbleed {
+  padding: 0;
+  overflow: hidden;
+}
+
+.content-container-full {
+  height: 100%;
+  min-height: 0;
+}
+
+.app-shell:has(.dash-root) .footer-minimal {
+  display: none;
 }
 
 .workspace {
@@ -553,5 +584,539 @@ a {
 
   .panel {
     min-height: 420px;
+  }
+}
+
+/* Session loading (before dashboard mounts) */
+.dash-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.dash-loading-inner {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.dash-spinner {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 12px;
+  border: 3px solid var(--border);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: dash-spin 0.75s linear infinite;
+}
+
+@keyframes dash-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* —— Dashboard (sidebar layout) —— */
+.dash-root {
+  display: flex;
+  min-height: 100%;
+  width: 100%;
+  background: var(--bg);
+}
+
+.dash-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: linear-gradient(180deg, #0c1224 0%, var(--panel) 45%);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  min-height: 0;
+}
+
+.dash-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.dash-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--brand), #8e5dff);
+  box-shadow: 0 6px 20px rgba(95, 124, 255, 0.35);
+}
+
+.dash-product {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+}
+
+.dash-tagline {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.dash-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.dash-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.dash-nav-link:hover {
+  color: var(--text);
+  background: rgba(95, 124, 255, 0.1);
+}
+
+.dash-nav-link.is-active {
+  color: #fff;
+  background: rgba(95, 124, 255, 0.22);
+  border: 1px solid rgba(95, 124, 255, 0.35);
+}
+
+.dash-nav-icon {
+  width: 1.25rem;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.dash-sidebar-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dash-select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #0b1226;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.dash-user {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+}
+
+.dash-user-email {
+  color: var(--text);
+  word-break: break-all;
+}
+
+.dash-user-role {
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.dash-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dash-topbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(9, 15, 29, 0.88);
+  backdrop-filter: blur(10px);
+}
+
+.dash-page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.dash-topbar-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.dash-pill {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.dash-pill-accent {
+  border-color: rgba(19, 194, 154, 0.4);
+  color: var(--accent);
+}
+
+.dash-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+  min-height: 0;
+}
+
+.dash-single {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.dash-hero {
+  margin-bottom: 24px;
+}
+
+.dash-hero-title {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.dash-hero-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 640px;
+  line-height: 1.5;
+}
+
+.dash-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+  background: linear-gradient(180deg, var(--panel-elevated), var(--panel));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.dash-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dash-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.dash-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.dash-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 4px;
+  width: 100%;
+}
+
+.dash-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #31466f;
+  background: #0b1226;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.dash-btn-primary {
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.dash-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dash-btn-ghost {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dash-btn-ghost:hover {
+  color: var(--text);
+  border-color: #4560d6;
+}
+
+.dash-btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #101933;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.dash-btn-sm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dash-alert {
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.dash-alert-error {
+  background: rgba(255, 103, 103, 0.12);
+  border: 1px solid rgba(255, 103, 103, 0.35);
+  color: #ffb4b4;
+}
+
+.dash-alert-success {
+  background: rgba(19, 194, 154, 0.12);
+  border: 1px solid rgba(19, 194, 154, 0.35);
+  color: #8eedd5;
+}
+
+.dash-table-wrap {
+  overflow-x: auto;
+}
+
+.dash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.dash-table th,
+.dash-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.dash-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dash-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.dash-badge-ok {
+  border-color: rgba(19, 194, 154, 0.5);
+  color: var(--accent);
+}
+
+/* Root layout: dashboard fills viewport, hide footer in-app */
+.content-fullbleed {
+  flex: 1;
+  min-height: 0;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.content-container-full {
+  height: 100%;
+  min-height: 0;
+}
+
+.app-shell:has(.dash-root) .footer-minimal {
+  display: none;
+}
+
+html:has(.dash-root),
+html:has(.dash-root) body {
+  height: 100%;
+  overflow: hidden;
+}
+
+html:has(.login-shell),
+html:has(.login-shell) body {
+  overflow: auto;
+  height: auto;
+  min-height: 100%;
+}
+
+/* Login */
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.login-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--brand), #8e5dff);
+  flex-shrink: 0;
+}
+
+.login-brand-text h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.login-brand-text p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.login-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.login-toggle .composer-send {
+  flex: 1;
+}
+
+/* Chat RAG sources */
+.message-sources {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #27365c;
+}
+
+.message-sources-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.message-sources ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+}
+
+.message-sources li {
+  margin-bottom: 4px;
+}
+
+.message-source-meta {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .dash-root {
+    flex-direction: column;
+  }
+
+  .dash-sidebar {
+    width: 100%;
+    max-height: none;
+  }
+
+  .dash-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    max-height: none;
+  }
+
+  .dash-nav-link {
+    flex: 1 1 auto;
+    min-width: 120px;
+    justify-content: center;
+  }
+
+  .dash-sidebar-footer {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .dash-sidebar-footer .dash-select {
+    flex: 1;
+    min-width: 160px;
   }
 }

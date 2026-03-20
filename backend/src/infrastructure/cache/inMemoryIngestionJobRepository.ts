@@ -13,12 +13,15 @@ export class InMemoryIngestionJobRepository implements IngestionJobRepository {
     documentId: string;
     filename: string;
     contentType: string;
+    storageObjectKey?: string | null;
     status: "queued" | "processing" | "indexed" | "failed";
   }) {
     const now = new Date();
     const row: IngestionJobRecord = {
       ...input,
+      storageObjectKey: input.storageObjectKey ?? null,
       errorMessage: null,
+      attemptCount: 0,
       createdAt: now,
       startedAt: null,
       completedAt: null
@@ -53,6 +56,7 @@ export class InMemoryIngestionJobRepository implements IngestionJobRepository {
     errorMessage?: string | null;
     setStartedAt?: boolean;
     setCompletedAt?: boolean;
+    incrementAttempt?: boolean;
   }) {
     const key = this.key(input.tenantId, input.workspaceId ?? null, input.jobId);
     const current = this.store.get(key) ?? this.store.get(this.key(input.tenantId, null, input.jobId));
@@ -61,6 +65,7 @@ export class InMemoryIngestionJobRepository implements IngestionJobRepository {
     current.errorMessage = input.errorMessage ?? null;
     if (input.setStartedAt) current.startedAt = new Date();
     if (input.setCompletedAt) current.completedAt = new Date();
+    if (input.incrementAttempt) current.attemptCount += 1;
     this.store.set(key, current);
   }
 

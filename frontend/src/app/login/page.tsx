@@ -31,7 +31,7 @@ export default function LoginPage() {
           ? await login({ email: normalizedEmail, password: normalizedPassword })
           : await register({ email: normalizedEmail, password: normalizedPassword, displayName: normalizedDisplayName });
       setAuthToken(res.token);
-      router.replace("/");
+      router.replace("/chat");
     } catch (e: any) {
       setError(e?.message ?? "Authentication failed");
     } finally {
@@ -45,7 +45,7 @@ export default function LoginPage() {
     try {
       const res = await loginWithGoogle(credential);
       setAuthToken(res.token);
-      router.replace("/");
+      router.replace("/chat");
     } catch (e: any) {
       setError(e?.message ?? "Google sign-in failed");
     } finally {
@@ -54,14 +54,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="container" style={{ maxWidth: 520, paddingTop: 48 }}>
+    <div className="login-shell">
       <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
-      <div className="panel panel-compact">
-        <h1 className="panel-title">Welcome</h1>
-        <p className="panel-subtitle">Sign in to access your document workspace</p>
+      <div className="login-card">
+        <div className="login-brand">
+          <div className="login-logo" aria-hidden />
+          <div className="login-brand-text">
+            <h1>OKDE</h1>
+            <p>Operational Knowledge &amp; Decision Engine</p>
+          </div>
+        </div>
+        <div className="panel panel-compact">
+          <h2 className="panel-title">Welcome</h2>
+          <p className="panel-subtitle">Sign in to your secure workspace</p>
 
         <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="login-toggle">
             <button className="composer-send" onClick={() => setMode("login")} disabled={mode === "login"}>
               Login
             </button>
@@ -132,6 +140,7 @@ export default function LoginPage() {
         </div>
 
         {error && <p className="error-text" style={{ marginTop: 12 }}>{error}</p>}
+        </div>
       </div>
     </div>
   );

@@ -13,6 +13,8 @@ async function main() {
   // Clean up existing data for idempotency
   await prisma.chatMessage.deleteMany();
   await prisma.chatSession.deleteMany();
+  await prisma.auditLog.deleteMany();
+  await prisma.workflow.deleteMany();
   await prisma.chunk.deleteMany();
   await prisma.document.deleteMany();
   await prismaWorkspaceMember.deleteMany();

@@ -15,15 +15,22 @@ export class PrismaIngestionJobRepository implements IngestionJobRepository {
     documentId: string;
     filename: string;
     contentType: string;
+    storageObjectKey?: string | null;
     status: "queued" | "processing" | "indexed" | "failed";
   }) {
     const created = await this.prismaIngestionJob.create({
       data: {
-        ...input,
-        workspaceId: input.workspaceId ?? null
+        id: input.id,
+        tenantId: input.tenantId,
+        workspaceId: input.workspaceId ?? null,
+        documentId: input.documentId,
+        filename: input.filename,
+        contentType: input.contentType,
+        storageObjectKey: input.storageObjectKey ?? null,
+        status: input.status
       }
     });
-    return created as IngestionJobRecord;
+    return created as unknown as IngestionJobRecord;
   }
 
   async getById(input: { tenantId: string; workspaceId?: string | null; jobId: string }) {
@@ -59,6 +66,7 @@ export class PrismaIngestionJobRepository implements IngestionJobRepository {
     errorMessage?: string | null;
     setStartedAt?: boolean;
     setCompletedAt?: boolean;
+    incrementAttempt?: boolean;
   }) {
     await this.prismaIngestionJob.updateMany({
       where: input.workspaceId
@@ -71,7 +79,8 @@ export class PrismaIngestionJobRepository implements IngestionJobRepository {
         status: input.status,
         errorMessage: input.errorMessage ?? null,
         ...(input.setStartedAt ? { startedAt: new Date() } : {}),
-        ...(input.setCompletedAt ? { completedAt: new Date() } : {})
+        ...(input.setCompletedAt ? { completedAt: new Date() } : {}),
+        ...(input.incrementAttempt ? { attemptCount: { increment: 1 } } : {})
       }
     });
   }

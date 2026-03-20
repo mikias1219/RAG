@@ -2,8 +2,8 @@ import "../styles/globals.css";
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "AI102 RAG SaaS",
-  description: "Azure-native, cloud-portable RAG-powered SaaS"
+  title: "OKDE — Operational Knowledge & Decision Engine",
+  description: "Multi-tenant B2B SaaS: RAG, workflows, agents, Azure-native"
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -11,28 +11,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <div className="app-shell">
-          <header className="topbar">
-            <div className="container topbar-inner">
-              <div className="brand">
-                <div className="brand-mark" />
-                <div>
-                  <p className="brand-title">AI102 RAG Platform</p>
-                  <p className="brand-subtitle">Enterprise Knowledge Assistant</p>
-                </div>
-              </div>
-              <div className="topbar-meta">
-                <span className="status-dot" />
-                <span>Azure-native and portable architecture</span>
-              </div>
-            </div>
-          </header>
-          <main className="content">
-            <div className="container content-container">{children}</div>
+          <main className="content content-fullbleed">
+            <div className="content-container-full">{children}</div>
           </main>
-          <footer className="footer">
+          <footer className="footer footer-minimal">
             <div className="container footer-inner">
-              <span>Secure RAG workspace</span>
-              <span>Ready for scale</span>
+              <span>OKDE · Secure multi-tenant workspace</span>
             </div>
           </footer>
         </div>

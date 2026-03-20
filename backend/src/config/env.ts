@@ -37,7 +37,17 @@ const envSchema = z.object({
   AZURE_OPENAI_CHAT_DEPLOYMENT: z.string().default("gpt-4o-mini"),
   AZURE_OPENAI_EMBEDDING_DEPLOYMENT: z.string().default("text-embedding-3-small"),
 
-  CACHE_PROVIDER: z.enum(["memory", "redis"]).default("memory")
+  CACHE_PROVIDER: z.enum(["memory", "redis"]).default("memory"),
+
+  REDIS_URL: z.string().optional(),
+  INGESTION_QUEUE_ENABLED: z.coerce.boolean().default(false),
+  /** Optional Python AI sidecar for embeddings/RAG (e.g. http://ai-python:8000) */
+  PYTHON_AI_BASE_URL: z.string().url().optional(),
+
+  AZURE_AD_B2C_TENANT: z.string().optional(),
+  AZURE_AD_B2C_POLICY: z.string().optional(),
+  AZURE_AD_B2C_ISSUER: z.string().optional(),
+  AZURE_AD_B2C_JWKS_URI: z.string().url().optional()
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
@@ -49,6 +59,10 @@ export function loadEnv(raw: NodeJS.ProcessEnv = process.env): AppEnv {
     const message = JSON.stringify(flattened.fieldErrors, null, 2);
     throw new Error(`Invalid environment variables:\n${message}`);
   }
-  return parsed.data;
+  const env = parsed.data;
+  if (env.INGESTION_QUEUE_ENABLED && !env.REDIS_URL) {
+    throw new Error("REDIS_URL is required when INGESTION_QUEUE_ENABLED=true");
+  }
+  return env;
 }
 

@@ -8,7 +8,8 @@ async function handle(res: Response) {
     let message = `Request failed with ${res.status}`;
     try {
       const body = await res.json();
-      if (body?.error?.message) message = body.error.message;
+      if (typeof body?.error?.message === "string") message = body.error.message;
+      else if (typeof body?.message === "string") message = body.message;
     } catch {
       // ignore
     }
@@ -177,6 +178,92 @@ export async function updateUserRole(userId: string, role: "user" | "admin") {
     method: "PATCH",
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ role })
+  });
+  return handle(res);
+}
+
+export type WorkflowDto = {
+  id: string;
+  tenantId: string;
+  workspaceId: string | null;
+  name: string;
+  description: string | null;
+  enabled: boolean;
+  rulesJson: string;
+  rules: unknown[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function listWorkflows(limit = 50): Promise<{ items: WorkflowDto[] }> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const res = await fetch(`${baseUrl}/workflows?${params.toString()}`, {
+    method: "GET",
+    headers: authHeaders()
+  });
+  return handle(res);
+}
+
+export async function createWorkflow(input: {
+  name: string;
+  description?: string;
+  rules: Array<{ condition: Record<string, unknown>; action: Record<string, unknown> }>;
+}): Promise<{ workflow: WorkflowDto }> {
+  const res = await fetch(`${baseUrl}/workflows`, {
+    method: "POST",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(input)
+  });
+  return handle(res);
+}
+
+export async function listAgents(): Promise<{ agents: unknown[] }> {
+  const res = await fetch(`${baseUrl}/agents`, { method: "GET", headers: authHeaders() });
+  return handle(res);
+}
+
+export async function runAgent(agentId: string, context: Record<string, unknown>) {
+  const res = await fetch(`${baseUrl}/agents/${agentId}/run`, {
+    method: "POST",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ context })
+  });
+  return handle(res);
+}
+
+export type AuditLogRow = {
+  id: string;
+  tenantId: string;
+  workspaceId: string | null;
+  userId: string | null;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  metadataJson: string;
+  metadata: unknown;
+  requestId: string | null;
+  createdAt: string;
+};
+
+export async function listAuditLogs(limit = 100): Promise<{ items: AuditLogRow[] }> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const res = await fetch(`${baseUrl}/audit?${params.toString()}`, {
+    method: "GET",
+    headers: authHeaders()
+  });
+  return handle(res);
+}
+
+export type WorkflowEvaluateResult = { matched: boolean; workflowId: string };
+
+export async function evaluateWorkflow(
+  workflowId: string,
+  context: Record<string, unknown>
+): Promise<WorkflowEvaluateResult> {
+  const res = await fetch(`${baseUrl}/workflows/${workflowId}/evaluate`, {
+    method: "POST",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ context })
   });
   return handle(res);
 }

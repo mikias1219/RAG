@@ -48,7 +48,8 @@ export function ChatShell({ onSourcesChange, selectedDocumentIds = [], onSelecti
       const assistantMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: res.answer
+        content: res.answer,
+        sources: res.sources?.length ? res.sources : undefined
       };
       setMessages((prev) => [...prev, assistantMsg]);
       if (onSourcesChange) {

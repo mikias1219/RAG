@@ -34,6 +34,8 @@ model Workspace {
   chatSessions ChatSession[]
   chatMessages ChatMessage[]
   ingestionJobs IngestionJob[]
+  workflows   Workflow[]
+  auditLogs   AuditLog[]
 
   @@unique([tenantId, slug])
   @@index([companyId, createdAt(sort: Desc)])
@@ -80,8 +82,11 @@ model IngestionJob {
   documentId  String
   filename    String
   contentType String
+  /// Full blob key in storage (tenant-prefixed) for async worker fetch
+  storageObjectKey String?
   status      String   @default("queued")
   errorMessage String?
+  attemptCount Int     @default(0)
   createdAt   DateTime @default(now())
   startedAt   DateTime?
   completedAt DateTime?
@@ -102,6 +107,10 @@ model Chunk {
   chunkIndex       Int
   text             String
   tokenCountApprox Int
+  /// Azure AI Search document id for this chunk (hybrid index)
+  searchDocumentId String?
+  embeddingModel   String?
+  embeddedAt       DateTime?
   createdAt        DateTime @default(now())
 
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
@@ -110,6 +119,42 @@ model Chunk {
   @@unique([tenantId, documentId, chunkIndex])
   @@index([tenantId, documentId])
   @@index([workspaceId, documentId])
+}
+
+model Workflow {
+  id          String   @id @default(uuid())
+  tenantId    String
+  workspaceId String?
+  name        String
+  description String?
+  enabled     Boolean  @default(true)
+  /// JSON: [{ "if": { "event": "document.indexed" }, "then": { "action": "notify" } }]
+  rulesJson   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, enabled])
+  @@index([workspaceId, enabled])
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  tenantId     String
+  workspaceId  String?
+  userId       String?
+  action       String
+  resourceType String
+  resourceId   String?
+  metadataJson String
+  requestId    String?
+  createdAt    DateTime @default(now())
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([workspaceId, createdAt(sort: Desc)])
 }
 
 model ChatSession {

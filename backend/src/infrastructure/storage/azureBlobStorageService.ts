@@ -35,6 +35,13 @@ export class AzureBlobStorageService implements StorageService {
 
     return { url: blob.url, key: blobKey };
   }
+
+  async getObject(input: { blobKey: string }): Promise<Buffer> {
+    const container = this.blobService.getContainerClient(this.opts.containerName);
+    const blob = container.getBlobClient(input.blobKey);
+    const download = await blob.downloadToBuffer();
+    return download;
+  }
 }
 
 function sanitize(s: string) {
