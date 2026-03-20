@@ -44,6 +44,13 @@ export class ChatService {
         userId: input.userId
       })).id;
 
+    const recentMessages = await this.deps.chatRepo.listMessages({
+      tenantId: input.tenantId,
+      workspaceId: input.workspaceId ?? null,
+      sessionId: session,
+      limit: 12
+    });
+
     await this.deps.chatRepo.appendMessage({
       tenantId: input.tenantId,
       workspaceId: input.workspaceId ?? null,
@@ -56,7 +63,11 @@ export class ChatService {
       tenantId: input.tenantId,
       workspaceId: input.workspaceId ?? null,
       question: input.question,
-      documentIds
+      documentIds,
+      conversationHistory: recentMessages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .slice(-8)
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))
     });
 
     await this.deps.chatRepo.appendMessage({

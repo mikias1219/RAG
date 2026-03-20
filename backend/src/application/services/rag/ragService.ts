@@ -21,6 +21,7 @@ export class RagService {
     workspaceId?: string | null;
     question: string;
     documentIds?: string[];
+    conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>;
   }) {
     const { tenantId, question } = input;
     const workspaceProfile = input.workspaceId
@@ -96,9 +97,10 @@ export class RagService {
     const system = [
       "You are a strict RAG assistant.",
       "Use only the provided sources as ground truth.",
-      "Do not use external knowledge unless explicitly asked.",
-      "If evidence is insufficient, state what exact info is missing.",
-      "When possible, reference source numbers like [SOURCE 1].",
+      "Never answer with facts not present in the provided sources.",
+      "If evidence is insufficient or unrelated, explicitly say you cannot answer from selected documents.",
+      "Prefer precise, concise answers with short sections and bullet points when useful.",
+      "For each major claim, include source references like [SOURCE 1].",
       industryGuidance(workspaceProfile?.industry, workspaceProfile?.domainFocus)
     ].join(" ");
 
@@ -110,11 +112,16 @@ export class RagService {
         )
         .join("\n");
 
+    const historyText = (input.conversationHistory ?? [])
+      .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+      .join("\n");
+
     const completion = await withRetry(
       () =>
         this.deps.ai.chatComplete({
           messages: [
             { role: "system", content: system },
+            ...(historyText ? [{ role: "system" as const, content: `Conversation history:\n${historyText}` }] : []),
             { role: "system", content: `Context:\n${context}` },
             { role: "user", content: question }
           ]

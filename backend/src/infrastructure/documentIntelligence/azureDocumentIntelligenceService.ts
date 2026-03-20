@@ -17,20 +17,18 @@ export class AzureDocumentIntelligenceService implements DocumentIntelligenceSer
       );
     }
 
-    const endpoint = this.opts.endpoint.replace(/\/+$/, "");
-    const url = `${endpoint}/documentintelligence/documentModels/${encodeURIComponent(this.opts.modelId)}:analyze?api-version=2024-02-29-preview`;
-    const start = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": input.contentType || "application/octet-stream",
-        "Ocp-Apim-Subscription-Key": this.opts.apiKey
-      },
-      body: new Uint8Array(input.bytes)
+    const endpointRoot = normalizeEndpointRoot(this.opts.endpoint);
+    const analyzePaths = [
+      `/documentintelligence/documentModels/${encodeURIComponent(this.opts.modelId)}:analyze?api-version=2024-02-29-preview`,
+      `/documentintelligence/documentModels/${encodeURIComponent(this.opts.modelId)}:analyze?api-version=2023-10-31-preview`,
+      `/formrecognizer/documentModels/${encodeURIComponent(this.opts.modelId)}:analyze?api-version=2023-07-31`
+    ];
+    const start = await startAnalysis({
+      endpointRoot,
+      analyzePaths,
+      apiKey: this.opts.apiKey,
+      input
     });
-    if (!start.ok) {
-      const body = await start.text().catch(() => "");
-      throw badRequest(`Document analysis start failed (${start.status}): ${body || start.statusText}`);
-    }
 
     const operationLocation = start.headers.get("operation-location");
     if (!operationLocation) {
@@ -62,6 +60,42 @@ export class AzureDocumentIntelligenceService implements DocumentIntelligenceSer
 
     throw badRequest("Document analysis timed out. Please retry.");
   }
+}
+
+function normalizeEndpointRoot(endpoint: string) {
+  return endpoint
+    .replace(/\/+$/, "")
+    .replace(/\/documentintelligence$/i, "")
+    .replace(/\/formrecognizer$/i, "");
+}
+
+type StartAnalysisInput = {
+  endpointRoot: string;
+  analyzePaths: string[];
+  apiKey: string;
+  input: { bytes: Buffer; contentType: string; filename: string };
+};
+
+async function startAnalysis(opts: StartAnalysisInput): Promise<Response> {
+  let lastErrorMessage = "";
+  let lastStatus = 0;
+  for (const path of opts.analyzePaths) {
+    const start = await fetch(`${opts.endpointRoot}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": opts.input.contentType || "application/octet-stream",
+        "Ocp-Apim-Subscription-Key": opts.apiKey
+      },
+      body: new Uint8Array(opts.input.bytes)
+    });
+    if (start.ok) return start;
+    lastStatus = start.status;
+    lastErrorMessage = await start.text().catch(() => start.statusText);
+    if (start.status !== 404) break;
+  }
+  throw badRequest(
+    `Document analysis start failed (${lastStatus}): ${lastErrorMessage || "Unable to start analysis"}`
+  );
 }
 
 function sleep(ms: number) {

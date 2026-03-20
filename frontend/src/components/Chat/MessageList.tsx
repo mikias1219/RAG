@@ -22,7 +22,9 @@ export function MessageList({ messages }: Props) {
             <div className="message-role">
               {m.role === "user" ? "You" : "Assistant"}
             </div>
-            <div className="message-content">{m.content}</div>
+            <div className="message-content">
+              <FormattedMessage text={m.content} />
+            </div>
             {m.role === "assistant" && m.sources && m.sources.length > 0 ? (
               <div className="message-sources">
                 <div className="message-sources-title">Sources</div>
@@ -42,6 +44,44 @@ export function MessageList({ messages }: Props) {
         </div>
       ))}
     </div>
+  );
+}
+
+function FormattedMessage({ text }: { text: string }) {
+  const lines = text.split("\n");
+  return (
+    <>
+      {lines.map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={`sp-${i}`} style={{ height: 6 }} />;
+        if (trimmed.startsWith("### ")) {
+          return (
+            <h4 key={`h3-${i}`} className="message-h3">
+              {trimmed.slice(4)}
+            </h4>
+          );
+        }
+        if (trimmed.startsWith("## ")) {
+          return (
+            <h3 key={`h2-${i}`} className="message-h2">
+              {trimmed.slice(3)}
+            </h3>
+          );
+        }
+        if (trimmed.startsWith("- ")) {
+          return (
+            <div key={`li-${i}`} className="message-li">
+              • {trimmed.slice(2)}
+            </div>
+          );
+        }
+        return (
+          <p key={`p-${i}`} className="message-p">
+            {trimmed}
+          </p>
+        );
+      })}
+    </>
   );
 }
 
