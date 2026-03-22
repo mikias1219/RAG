@@ -2,18 +2,33 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { SessionProvider, useSession } from "@/lib/context/SessionContext";
+import {
+  IconAdmin,
+  IconAgents,
+  IconAudit,
+  IconChat,
+  IconCloud,
+  IconDocs,
+  IconSettings,
+  IconWorkflow
+} from "@/components/layout/NavIcons";
 
-const nav: Array<{ href: string; label: string; icon: string; roles?: string[] }> = [
-  { href: "/chat", label: "AI Chat", icon: "◆" },
-  { href: "/documents", label: "Documents", icon: "▤" },
-  { href: "/workflows", label: "Workflows", icon: "⎘" },
-  { href: "/agents", label: "AI Agents", icon: "◇" },
-  { href: "/platform", label: "Platform", icon: "☁" },
-  { href: "/settings", label: "Settings", icon: "⚙" },
-  { href: "/audit", label: "Audit log", icon: "📋", roles: ["admin", "superadmin"] },
-  { href: "/admin", label: "Admin", icon: "✦", roles: ["superadmin"] }
+const nav: Array<{
+  href: string;
+  label: string;
+  Icon: ComponentType;
+  roles?: string[];
+}> = [
+  { href: "/chat", label: "AI Chat", Icon: IconChat },
+  { href: "/documents", label: "Documents", Icon: IconDocs },
+  { href: "/workflows", label: "Workflows", Icon: IconWorkflow },
+  { href: "/agents", label: "AI Agents", Icon: IconAgents },
+  { href: "/platform", label: "Platform", Icon: IconCloud },
+  { href: "/settings", label: "Settings", Icon: IconSettings },
+  { href: "/audit", label: "Audit log", Icon: IconAudit, roles: ["admin", "superadmin"] },
+  { href: "/admin", label: "Admin", Icon: IconAdmin, roles: ["superadmin"] }
 ];
 
 function DashboardChrome({ children }: { children: ReactNode }) {
@@ -29,7 +44,7 @@ function DashboardChrome({ children }: { children: ReactNode }) {
     <div className="dash-root">
       <aside className="dash-sidebar">
         <div className="dash-sidebar-brand">
-          <div className="dash-logo" />
+          <div className="dash-logo" aria-hidden />
           <div>
             <div className="dash-product">OKDE</div>
             <div className="dash-tagline">Knowledge &amp; decisions</div>
@@ -40,6 +55,7 @@ function DashboardChrome({ children }: { children: ReactNode }) {
           {visibleNav.map((item) => {
             const active =
               pathname === item.href || (item.href.length > 1 && pathname.startsWith(`${item.href}/`));
+            const Icon = item.Icon;
             return (
               <Link
                 key={item.href}
@@ -47,7 +63,7 @@ function DashboardChrome({ children }: { children: ReactNode }) {
                 className={`dash-nav-link ${active ? "is-active" : ""}`}
               >
                 <span className="dash-nav-icon" aria-hidden>
-                  {item.icon}
+                  <Icon />
                 </span>
                 <span>{item.label}</span>
               </Link>

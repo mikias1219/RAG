@@ -1,14 +1,23 @@
 :root {
-  --bg: #070b17;
-  --panel: #0f172a;
-  --panel-elevated: #111b31;
-  --border: #1f2a44;
-  --text: #e5edff;
-  --muted: #8ea0c9;
-  --brand: #5f7cff;
-  --brand-strong: #3f5fff;
-  --accent: #13c29a;
-  --error: #ff6767;
+  /* Modern color palette */
+  --bg: #0a0e27;
+  --panel: #0f1729;
+  --panel-elevated: #121f3d;
+  --border: #1e2a48;
+  --text: #e8f0ff;
+  --text-secondary: #b0bfdc;
+  --muted: #7a8aae;
+  --brand: #6366f1;
+  --brand-strong: #4f46e5;
+  --brand-light: #818cf8;
+  --accent: #10b981;
+  --accent-light: #6ee7b7;
+  --error: #ef4444;
+  --error-light: #fca5a5;
+  --warning: #f59e0b;
+  --warning-light: #fcd34d;
+  --success: #10b981;
+  --success-light: #6ee7b7;
 }
 
 * {
@@ -18,14 +27,27 @@
 html {
   margin: 0;
   min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   margin: 0;
   min-height: 100%;
-  background: radial-gradient(circle at top, #121d37 0%, var(--bg) 46%);
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(99, 102, 241, 0.18), transparent 50%),
+    linear-gradient(165deg, #070a14 0%, #0c1220 45%, #0a0e1a 100%);
   color: var(--text);
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 /* Dashboard locks scroll to the main pane; login/marketing can scroll the page */
@@ -167,10 +189,11 @@ a {
 
 .panel {
   border: 1px solid var(--border);
-  border-radius: 14px;
-  background: linear-gradient(180deg, var(--panel-elevated), var(--panel));
-  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.25);
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--panel-elevated) 0%, var(--panel) 100%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 1px rgba(100, 150, 255, 0.1);
   min-height: 0;
+  backdrop-filter: blur(10px);
 }
 
 .panel-compact {
@@ -313,18 +336,21 @@ a {
 
 .message-bubble {
   max-width: 82%;
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: 14px;
+  padding: 12px 16px;
   border: 1px solid transparent;
+  transition: all 0.2s ease;
 }
 
 .bubble-user {
-  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  background: linear-gradient(135deg, var(--brand-light) 0%, var(--brand-strong) 100%);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
 }
 
 .bubble-assistant {
-  background: #16223f;
-  border-color: #27365c;
+  background: linear-gradient(135deg, #1a2847 0%, #0f1729 100%);
+  border-color: var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .message-role {
@@ -730,14 +756,15 @@ a {
 }
 
 .dash-sidebar {
-  width: 260px;
+  width: 280px;
   flex-shrink: 0;
   border-right: 1px solid var(--border);
-  background: linear-gradient(180deg, #0c1224 0%, var(--panel) 45%);
+  background: linear-gradient(180deg, #0a0e27 0%, #0f1729 50%);
   display: flex;
   flex-direction: column;
-  padding: 20px 14px;
+  padding: 24px 16px;
   min-height: 0;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
 }
 
 .dash-sidebar-brand {
@@ -782,25 +809,26 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  color: var(--muted);
+  padding: 11px 14px;
+  border-radius: 12px;
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
-  transition:
-    background 0.15s,
-    color 0.15s;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
 .dash-nav-link:hover {
   color: var(--text);
-  background: rgba(95, 124, 255, 0.1);
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.15);
 }
 
 .dash-nav-link.is-active {
   color: #fff;
-  background: rgba(95, 124, 255, 0.22);
-  border: 1px solid rgba(95, 124, 255, 0.35);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(99, 102, 241, 0.15));
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
 }
 
 .dash-nav-icon {
@@ -858,10 +886,11 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(9, 15, 29, 0.88);
-  backdrop-filter: blur(10px);
+  padding: 18px 28px;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.12);
+  background: linear-gradient(180deg, rgba(12, 18, 32, 0.98), rgba(10, 14, 23, 0.92));
+  backdrop-filter: blur(20px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
 }
 
 .dash-page-title {
@@ -895,6 +924,7 @@ a {
   overflow: auto;
   padding: 24px;
   min-height: 0;
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99, 102, 241, 0.06), transparent 55%);
 }
 
 .dash-single {
@@ -922,11 +952,12 @@ a {
 
 .dash-card {
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 20px;
+  border-radius: 16px;
+  padding: 24px;
   margin-bottom: 20px;
   background: linear-gradient(180deg, var(--panel-elevated), var(--panel));
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 1px rgba(100, 150, 255, 0.1);
+  transition: all 0.3s ease;
 }
 
 .dash-card-head {
@@ -963,23 +994,42 @@ a {
 .dash-input {
   flex: 1;
   min-width: 200px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #31466f;
-  background: #0b1226;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(11, 18, 38, 0.5);
   color: var(--text);
   font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.dash-input:focus {
+  outline: none;
+  border-color: var(--brand);
+  background: rgba(11, 18, 38, 0.8);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
 }
 
 .dash-btn-primary {
-  padding: 10px 18px;
+  padding: 10px 20px;
   border: 0;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--brand-light) 0%, var(--brand-strong) 100%);
   color: #fff;
   font-weight: 600;
   cursor: pointer;
   font-size: 13px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.dash-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+}
+
+.dash-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .dash-btn-primary:disabled {
@@ -988,28 +1038,36 @@ a {
 }
 
 .dash-btn-ghost {
-  padding: 8px 14px;
+  padding: 9px 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: transparent;
-  color: var(--muted);
-  font-size: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .dash-btn-ghost:hover {
   color: var(--text);
-  border-color: #4560d6;
+  border-color: var(--brand);
+  background: rgba(99, 102, 241, 0.05);
 }
 
 .dash-btn-sm {
-  padding: 6px 12px;
+  padding: 7px 14px;
   font-size: 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border);
-  background: #101933;
+  background: rgba(99, 102, 241, 0.05);
   color: var(--text);
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dash-btn-sm:hover:not(:disabled) {
+  border-color: var(--brand);
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .dash-btn-sm:disabled {
@@ -1191,10 +1249,17 @@ html:has(.login-shell) body {
 /* Chat / documents two-column layout inside dashboard */
 .dash-page-grid {
   display: grid;
-  gap: 20px;
+  gap: 24px;
+  padding: 4px 0 8px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;
   min-height: 0;
+}
+
+.dash-page-grid > .panel {
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.12),
+    0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
 .dash-panel-tall {
@@ -1284,4 +1349,16 @@ html:has(.login-shell) body {
     flex: 1;
     min-width: 160px;
   }
+}
+
+/* Marketing / login pages footer */
+.app-shell:not(:has(.dash-root)) .footer-minimal {
+  border-top: 1px solid var(--border);
+  background: rgba(7, 10, 20, 0.85);
+  backdrop-filter: blur(8px);
+}
+
+.app-shell:not(:has(.dash-root)) .footer-inner {
+  color: var(--text-secondary);
+  font-size: 12px;
 }

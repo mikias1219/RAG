@@ -147,12 +147,28 @@ POST   /api/agents/:id/run
 
 ```bash
 # Backend
-npm test
+cd backend && npm test
 npm run test:watch
 
 # Frontend
-npm run build
+cd frontend && npm run build
+npm run typecheck
+npm run lint
 ```
+
+### Quick API smoke (local or deployed)
+
+```bash
+BASE_URL=http://localhost:8080/api ./scripts/smoke-e2e.sh
+```
+
+### CI/CD (GitHub Actions)
+
+- Runs only when `backend/**`, `frontend/**`, or `.github/workflows/**` change (doc-only edits skip the pipeline).
+- **Concurrency**: newer pushes cancel in-progress runs on the same branch/PR.
+- **Validate**: single job — backend + frontend `lint` + `typecheck` (no duplicate matrix runners).
+- **Backend tests**: `npm test` without coverage in CI for speed; run `npm test -- --coverage` locally when needed.
+- **Deploy**: still requires `frontend-build` + passing tests; Docker build runs only on `main` after checks pass.
 
 ## Build & Deploy
 
